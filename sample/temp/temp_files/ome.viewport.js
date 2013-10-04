@@ -212,7 +212,7 @@ jQuery._WeblitzViewport = function (container, server, options) {
   
   var getSizeDict = function () {
     var size;
-    if (_this.loadedImg.rdefs.projection.toLowerCase() == 'split') {
+    if (_this.loadedImg.rdefs.projection && _this.loadedImg.rdefs.projection.toLowerCase() == 'split') {
       if (_this.isGreyModel()) {
         size =  _this.loadedImg.split_channel.g;
       } else {
@@ -376,6 +376,7 @@ jQuery._WeblitzViewport = function (container, server, options) {
     _this.loadedImg.current.query = parseQuery(query);
     //viewportimg.hide();
     ajaxTimeout = setTimeout(loadError, 10000);
+    console.log(server+'/imgData/'+iid);
     jQuery.getJSON(server+'/imgData/'+iid, _reset);
   };
 
@@ -934,7 +935,7 @@ jQuery._WeblitzViewport = function (container, server, options) {
     }
     query.push('c=' + chs.join(','));
     /* Rendering Model */
-    query.push('m=' + this.loadedImg.rdefs.model.toLowerCase().substring(0,1));
+    query.push('m=' + this.loadedImg.rdefs.model ? this.loadedImg.rdefs.model.toLowerCase().substring(0,1) : "");
     /* Projection */
     query.push('p=' + this.loadedImg.rdefs.projection.toLowerCase());
     /* Inverted Axis */
