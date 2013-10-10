@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script type="text/javascript" src="jquery-1.7.2.js"></script>
+<script type="text/javascript" src="paperjs-v0.9.9/dist/paper.js"></script>
+<!-- Define inlined JavaScript -->
+<script type="text/javascript">
+
+	$(document).ready(function() {
+            // Get a reference to the canvas object
+            var canvas = document.getElementById('myCanvas');
+            // Create an empty project and a view for the canvas:
+            paper.setup(canvas);
+            
+            var image = new paper.Raster("image");
+            image.translate(image.width / 2, image.height / 2);
+            
+            var test = new paper.Path.Rectangle(200, 200, 100, 100);
+            test.strokeColor = 'black';                
+            var test2 = new paper.Path.Ellipse(50, 100, 100, 50);
+            test2.strokeColor = 'black';
+            var roiGroup = new paper.Group([test, test2]);
+
+            var moveAndCheckBounds = function(delta) {
+                var bounds = paper.project.activeLayer.bounds.clone();
+                delta.x = Math.max(delta.x, paper.view.bounds.width - bounds.width - bounds.x);
+                delta.y = Math.max(delta.y, paper.view.bounds.height - bounds.height - bounds.y);
+                delta.x = Math.min(delta.x, paper.view.bounds.x - bounds.x);
+                delta.y = Math.min(delta.y, paper.view.bounds.y - bounds.y);
+                paper.project.activeLayer.translate(delta);                
+            };
+            
+            var panningCenter;
+            var panningTool = new paper.Tool({
+                'onMouseDrag': function(event) {
+                    moveAndCheckBounds(event.delta.clone());
+                }
+            });
+
+            var lastHit;
+            var selectionTool = new paper.Tool({
+                'onMouseMove': function(event) {
+                    var hit = roiGroup.hitTest(event.point, {'handles': true, 'tolerance': 10});
+                    if (lastHit) {
+                        lastHit.item.strokeColor = 'black';
+                    }
+                    if (hit) {
+                        hit.item.strokeColor = 'green';
+                    }
+                    lastHit = hit;
+                },
+                'onMouseDown': function(event) {
+                    var hit = roiGroup.hitTest(event.point);
+                    paper.Base.each(paper.project.selectedItems, function(item) {
+                        item.selected = false;
+                    });
+                    if (hit) {
+                        hit.item.selected = true;
+                    }
+                }
+            });
+
+            var zoom = function(level, x, y, delta) {
+                if (!level && delta < 0) {
+                    level = paper.view.zoom * 1.1;
+                } else if (!level && delta > 0) {
+                    level = paper.view.zoom / 1.1;
+                }
+                if (level) {
+                    // get coordinates under mouse before and after zoom...
+                    var before = paper.view.viewToProject(x, y);
+                    paper.view.zoom = level;
+                    // ...then scroll to keep the same point under the mouse
+                    moveAndCheckBounds(paper.view.viewToProject(x, y).subtract(before));
+                    paper.view.draw();
+                    $("#zoom-tool").val(parseInt(level * 100, 10));
+                }
+            };
+            
+            
+            // hook up event handlers
+            
+            paper.view.element.addEventListener('mousewheel', function(ev) {
+                zoom(undefined, ev.pageX, ev.pageY, -ev.wheelDelta);
+            }, false);
+            paper.view.element.addEventListener('DOMMouseScroll', function(ev) {
+                zoom(undefined, ev.pageX, ev.pageY, ev.detail);
+            }, false);
+            
+            $("#toggle-rois").click(function() {
+                roiGroup.visible = !roiGroup.visible;
+                paper.view.draw(); // draw immediately
+            });
+
+            $("#panning-tool").click(function() {
+                panningTool.activate();
+            });
+
+            $("#selection-tool").click(function() {
+                selectionTool.activate();
+            });
+            
+            $("#zoom-tool").on('change', function(event) {
+                zoom(parseFloat(this.value, 10) / 100);
+            });
+        });
+</script>
+</head>
+<body>
+	<canvas id="myCanvas" style="width: 600px; height: 400px; border: solid red 1px;"></canvas>
+
+        <br /><br /><br />
+        
+        <button id="toggle-rois">Toggle ROIs</button>
+        <button id="panning-tool">Pan</button>
+        <button id="selection-tool">Select ROI</button>
+        Zoom: <input type="number" min="0" max="1000" id="zoom-tool" value="100" step="10" />
+        
+        <img src="sample.jpg" style="display: none;" id="image" />
+
+        <img src="sample.jpg" style="width: 200px; height: 200px;" />
+</body>
+</html>

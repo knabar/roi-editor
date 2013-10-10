@@ -4,6 +4,9 @@
 *  and scale.raphael.js  http://shapevent.com/scaleraphael/
 */
 
+var paper;
+var roi_json;
+
 $.fn.roi_display = function(options) {
     return this.each(function(){
 
@@ -29,7 +32,7 @@ $.fn.roi_display = function(options) {
             var $canvas = $('#'+canvas_name)
         }
 
-        var roi_json = null;          // load ROI data as json when needed
+        roi_json = null;          // load ROI data as json when needed
         this.theZ = null;
         this.theT = null;
         var rois_displayed = false;   // flag to toggle visability.
@@ -42,7 +45,7 @@ $.fn.roi_display = function(options) {
         var shape_objects = new Array();
         
         // Creates Raphael canvas. Uses scale.raphael.js to provide paper.scaleAll(ratio);
-        var paper = new ScaleRaphael(canvas_name, orig_width, orig_height);
+        paper = new ScaleRaphael(canvas_name, orig_width, orig_height);
         
         // break long labels into multiple lines
         var formatShapeText = function(text_string) {
@@ -286,6 +289,9 @@ $.fn.roi_display = function(options) {
                         && ((shape.theZ == this.theZ-1)
                             || typeof shape.theZ === "undefined")) {
                         var newShape = draw_shape(shape);
+                        
+                        roi['raphael'] = newShape;
+                        
                         var toolTip = get_tool_tip(shape);
                         // Add text - NB: text is not 'attached' to shape in any way. 
                         if (newShape != null) {
