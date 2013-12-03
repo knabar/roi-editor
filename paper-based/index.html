@@ -22,13 +22,12 @@
         };
 
 
-
 	$(document).ready(function() {
             // Get a reference to the canvas object
             var canvas = document.getElementById('myCanvas');
             // Create an empty project and a view for the canvas:
             paper.setup(canvas);
-            
+
             var image = new paper.Raster("image");
             image.translate(image.width / 2, image.height / 2);
 
@@ -40,20 +39,83 @@
                 delta.y = Math.max(delta.y, paper.view.bounds.height - bounds.height - bounds.y);
                 delta.x = Math.min(delta.x, paper.view.bounds.x - bounds.x);
                 delta.y = Math.min(delta.y, paper.view.bounds.y - bounds.y);
-                paper.project.activeLayer.translate(delta);                
+                paper.project.activeLayer.translate(delta);
+            };
+
+            var selectBox = null;
+            var selectItem = function(item) {
+                if (selectBox) {
+                    selectBox.remove();
+                }
+                if (item) {
+                    selectBox = new paper.Path.Rectangle(item.strokeBounds);
+                    selectBox.style = {
+                        strokeColor: 'yellow'
+                    }
+                }
+            }
+
+            var determineResizeMode = function(point, bounds) {
+                var distance = function(a, b) {
+                    return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+                };
+                var modes = ['topLeft', 'topCenter', 'topRight', 'leftCenter', 'rightCenter', 'bottomLeft', 'bottomCenter', 'bottomRight'];
+                var mode = null;
+                var dist = null;
+                for (var i in modes) {
+                    m = modes[i];
+                    d = distance(point, bounds[m]);
+                    if (dist === null || d < dist) {
+                        mode = m;
+                        dist = d;
+                    }
+                }
+                return mode;
+            };
+
+            var resizeOptions = {
+                topLeft: ['bottomRight', -1, -1],
+                topCenter: ['bottomCenter', 0, -1],
+                topRight: ['bottomLeft', 1, -1],
+                leftCenter: ['rightCenter', -1, 0],
+                rightCenter: ['leftCenter', 1, 0],
+                bottomLeft: ['topRight', -1, 1],
+                bottomCenter: ['topCenter', 0, 1],
+                bottomRight: ['topLeft', 1, 1]
             };
 
             var lastHit;
+            var selectBoxHit;
             var dragging = false;
-            
+            var mode = null;
+            var resizeMode;
+
             var panningTool = new paper.Tool({
                 'onMouseDrag': function(event) {
                     dragging = true;
-                    if (!lastHit) {
+                    if (mode == 'pan') {
                         moveAndCheckBounds(event.delta.clone());
-                    } else {
+                    } else if (mode == 'dragShape') {
                         lastHit.item.position.x += event.delta.x;
                         lastHit.item.position.y += event.delta.y;
+                        if (selectBox) {
+                            selectBox.position = lastHit.item.position;
+                        }
+                    } else if (mode == 'resize') {
+
+                        var options = resizeOptions[resizeMode];
+
+                        var b = lastHit.item.bounds;
+                        var scale_x = (b.width + event.delta.x * options[1]) / b.width;
+                        var scale_y = (b.height + event.delta.y * options[2]) / b.height;
+
+                        if (scale_x * b.width < 10 || scale_y * b.height < 10) {
+                            return;
+                        }
+
+                        lastHit.item.scale(scale_x, scale_y, lastHit.item.bounds[options[0]]);
+                        selectBox.scale(scale_x, scale_y, selectBox.bounds[options[0]]);
+
                     }
                 },
                 'onMouseMove': function(event) {
@@ -65,21 +127,38 @@
                         hit.item.strokeColor = 'green';
                     }
                     lastHit = hit;
+
+                    if (selectBox && lastHit) {
+                        selectBoxHit = selectBox.hitTest(event.point, {'tolerance': 10, 'stroke': true});
+                        if (selectBoxHit) {
+                            selectBox.strokeColor = 'blue';
+                        } else {
+                            selectBox.strokeColor = 'yellow';
+                        }
+                    } else {
+                        selectBoxHit = null;
+                        if (selectBox) {
+                            selectBox.strokeColor = 'yellow';
+                        }
+                    }
                 },
                 'onMouseDown': function(event) {
                     dragging = false;
-                    if (lastHit) {
-                        paper.Base.each(paper.project.selectedItems, function(item) {
-                            item.selected = false;
-                        });
-                        lastHit.item.selected = true;
+                    if (selectBoxHit) {
+                        mode = 'resize';
+                        resizeMode = determineResizeMode(event.point, selectBox.bounds);
+                        console.log(resizeMode);
+                    } else if (lastHit) {
+                        selectItem(lastHit.item);
+                        mode = 'dragShape';
+                    } else {
+                        mode = 'pan';
                     }
+                    console.log('mode is', mode);
                 },
                 'onMouseUp': function(event) {
                     if (!dragging && !lastHit) {
-                        paper.Base.each(paper.project.selectedItems, function(item) {
-                            item.selected = false;
-                        });
+                        selectItem(null);
                     }
                 }
             });
@@ -100,19 +179,20 @@
                     $("#zoom-tool").val(parseInt(level * 100, 10));
                 }
             };
-            
-            
+
+
             // hook up event handlers
-            
+
             paper.view.element.addEventListener('mousewheel', function(ev) {
                 zoom(undefined, ev.pageX, ev.pageY, -ev.wheelDelta);
             }, false);
             paper.view.element.addEventListener('DOMMouseScroll', function(ev) {
                 zoom(undefined, ev.pageX, ev.pageY, ev.detail);
             }, false);
-            
+
             $("#toggle-rois").click(function() {
                 roiGroup.visible = !roiGroup.visible;
+                selectItem(null);
                 paper.view.draw(); // draw immediately
             });
 
@@ -120,7 +200,7 @@
                 panningTool.activate();
             });
             panningTool.activate();
-            
+
             $("#zoom-tool").on('change', function(event) {
                 zoom(parseFloat(this.value, 10) / 100);
             });
@@ -131,11 +211,11 @@
 	<canvas id="myCanvas" style="width: 600px; height: 400px; border: solid red 1px;"></canvas>
 
         <br /><br /><br />
-        
+
         <button id="toggle-rois">Toggle ROIs</button>
         <button id="panning-tool">Pan</button>
         Zoom: <input type="number" min="0" max="1000" id="zoom-tool" value="100" step="10" />
-        
+
         <img src="sample.jpg" style="display: none;" id="image" />
 
         <img src="sample.jpg" style="width: 200px; height: 200px;" />
