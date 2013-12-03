@@ -6,6 +6,23 @@
 <!-- Define inlined JavaScript -->
 <script type="text/javascript">
 
+        roiStyle = {
+            strokeColor: 'black',
+            fillColor: 'rgba(255, 0, 0, 0.2)'
+        };
+
+        var loadROIs = function() {
+            var test = new paper.Path.Rectangle(200, 200, 100, 100);
+            test.style = roiStyle;
+
+            var test2 = new paper.Path.Ellipse(50, 100, 100, 50);
+            test2.style = roiStyle;
+
+            return new paper.Group([test, test2]);
+        };
+
+
+
 	$(document).ready(function() {
             // Get a reference to the canvas object
             var canvas = document.getElementById('myCanvas');
@@ -14,12 +31,8 @@
             
             var image = new paper.Raster("image");
             image.translate(image.width / 2, image.height / 2);
-            
-            var test = new paper.Path.Rectangle(200, 200, 100, 100);
-            test.strokeColor = 'black';                
-            var test2 = new paper.Path.Ellipse(50, 100, 100, 50);
-            test2.strokeColor = 'black';
-            var roiGroup = new paper.Group([test, test2]);
+
+            var roiGroup = loadROIs();
 
             var moveAndCheckBounds = function(delta) {
                 var bounds = paper.project.activeLayer.bounds.clone();
@@ -31,13 +44,20 @@
             };
 
             var lastHit;
+            var dragging = false;
             
             var panningTool = new paper.Tool({
                 'onMouseDrag': function(event) {
-                    moveAndCheckBounds(event.delta.clone());
+                    dragging = true;
+                    if (!lastHit) {
+                        moveAndCheckBounds(event.delta.clone());
+                    } else {
+                        lastHit.item.position.x += event.delta.x;
+                        lastHit.item.position.y += event.delta.y;
+                    }
                 },
                 'onMouseMove': function(event) {
-                    var hit = roiGroup.hitTest(event.point, {'handles': true, 'tolerance': 10});
+                    var hit = roiGroup.hitTest(event.point, {'tolerance': 10, 'fill': true});
                     if (lastHit) {
                         lastHit.item.strokeColor = 'black';
                     }
@@ -47,12 +67,19 @@
                     lastHit = hit;
                 },
                 'onMouseDown': function(event) {
-                    var hit = roiGroup.hitTest(event.point);
-                    paper.Base.each(paper.project.selectedItems, function(item) {
-                        item.selected = false;
-                    });
-                    if (hit) {
-                        hit.item.selected = true;
+                    dragging = false;
+                    if (lastHit) {
+                        paper.Base.each(paper.project.selectedItems, function(item) {
+                            item.selected = false;
+                        });
+                        lastHit.item.selected = true;
+                    }
+                },
+                'onMouseUp': function(event) {
+                    if (!dragging && !lastHit) {
+                        paper.Base.each(paper.project.selectedItems, function(item) {
+                            item.selected = false;
+                        });
                     }
                 }
             });
