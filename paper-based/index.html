@@ -29,16 +29,13 @@
                 delta.y = Math.min(delta.y, paper.view.bounds.y - bounds.y);
                 paper.project.activeLayer.translate(delta);                
             };
+
+            var lastHit;
             
-            var panningCenter;
             var panningTool = new paper.Tool({
                 'onMouseDrag': function(event) {
                     moveAndCheckBounds(event.delta.clone());
-                }
-            });
-
-            var lastHit;
-            var selectionTool = new paper.Tool({
+                },
                 'onMouseMove': function(event) {
                     var hit = roiGroup.hitTest(event.point, {'handles': true, 'tolerance': 10});
                     if (lastHit) {
@@ -95,10 +92,7 @@
             $("#panning-tool").click(function() {
                 panningTool.activate();
             });
-
-            $("#selection-tool").click(function() {
-                selectionTool.activate();
-            });
+            panningTool.activate();
             
             $("#zoom-tool").on('change', function(event) {
                 zoom(parseFloat(this.value, 10) / 100);
@@ -113,7 +107,6 @@
         
         <button id="toggle-rois">Toggle ROIs</button>
         <button id="panning-tool">Pan</button>
-        <button id="selection-tool">Select ROI</button>
         Zoom: <input type="number" min="0" max="1000" id="zoom-tool" value="100" step="10" />
         
         <img src="sample.jpg" style="display: none;" id="image" />
