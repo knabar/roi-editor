@@ -20,7 +20,24 @@
             var test2 = new paper.Path.Ellipse(50, 100, 100, 50);
             test2.style = roiStyle;
 
-            return new paper.Group([test, test2]);
+            var myPath = new paper.Path();
+            myPath.add(new paper.Point(350, 75));
+            myPath.add(new paper.Point(400, 25));
+            myPath.add(new paper.Point(450, 75));
+            myPath.add(new paper.Point(380, 65));
+            myPath.closed = true;
+            myPath.style = roiStyle;
+
+
+            var myPath2 = new paper.Path();
+            myPath2.add(new paper.Point(350, 275));
+            myPath2.add(new paper.Point(400, 225));
+            myPath2.add(new paper.Point(450, 275));
+            myPath2.add(new paper.Point(380, 265));
+            myPath2.closed = false;
+            myPath2.strokeColor = 'black';
+
+            return new paper.Group([test, test2, myPath, myPath2]);
         };
 
 
@@ -116,7 +133,7 @@
                     }
                 },
                 'onMouseMove': function(event) {
-                    var hit = roiGroup.hitTest(event.point, {'tolerance': 10, 'fill': true});
+                    var hit = roiGroup.hitTest(event.point, {'tolerance': 10, 'fill': true, 'stroke': true});
                     if (lastHit) {
                         lastHit.item.strokeColor = 'black';
                     }
