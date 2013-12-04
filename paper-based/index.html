@@ -94,7 +94,6 @@
 
             var dragging = false;
             var mode = null;
-            var resizeMode;
 
             var defaultTool = new paper.Tool({
                 'onMouseDrag': function(event) {
@@ -106,8 +105,8 @@
                         selectedItem.position.y += event.delta.y;
                         selectBox.position = selectedItem.position;
                         handles.update();
-                    } else if (mode == 'resize') {
-                        var options = resizeOptions[resizeMode];
+                    } else if (mode.indexOf('resize') == 0) {
+                        var options = resizeOptions[mode.substring(6)];
                         var b = selectedItem.bounds;
                         var new_width = Math.max(b.width + event.delta.x * options[1], ROI_MIN_SIZE);
                         var new_height = Math.max(b.height + event.delta.y * options[2], ROI_MIN_SIZE);
@@ -131,8 +130,7 @@
                     if (handles.visible) {
                         for (var i in modes) {
                             if (handles.children[i].hitTest(event.point, {'fill': true})) {
-                                mode = 'resize';
-                                resizeMode = modes[i];
+                                mode = 'resize' + modes[i];
                                 return;
                             }
                         }
