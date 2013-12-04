@@ -86,6 +86,7 @@
 
             var lastHit;
             var selectBoxHit;
+            var selectedItem;
             var dragging = false;
             var mode = null;
             var resizeMode;
@@ -96,16 +97,14 @@
                     if (mode == 'pan') {
                         moveAndCheckBounds(event.delta.clone());
                     } else if (mode == 'dragShape') {
-                        lastHit.item.position.x += event.delta.x;
-                        lastHit.item.position.y += event.delta.y;
-                        if (selectBox) {
-                            selectBox.position = lastHit.item.position;
-                        }
+                        selectedItem.position.x += event.delta.x;
+                        selectedItem.position.y += event.delta.y;
+                        selectBox.position = selectedItem.position;
                     } else if (mode == 'resize') {
 
                         var options = resizeOptions[resizeMode];
 
-                        var b = lastHit.item.bounds;
+                        var b = selectedItem.bounds;
                         var scale_x = (b.width + event.delta.x * options[1]) / b.width;
                         var scale_y = (b.height + event.delta.y * options[2]) / b.height;
 
@@ -113,7 +112,7 @@
                             return;
                         }
 
-                        lastHit.item.scale(scale_x, scale_y, lastHit.item.bounds[options[0]]);
+                        selectedItem.scale(scale_x, scale_y, selectedItem.bounds[options[0]]);
                         selectBox.scale(scale_x, scale_y, selectBox.bounds[options[0]]);
 
                     }
@@ -128,7 +127,7 @@
                     }
                     lastHit = hit;
 
-                    if (selectBox && lastHit) {
+                    if (selectBox) {
                         selectBoxHit = selectBox.hitTest(event.point, {'tolerance': 10, 'stroke': true});
                         if (selectBoxHit) {
                             selectBox.strokeColor = 'blue';
@@ -137,9 +136,6 @@
                         }
                     } else {
                         selectBoxHit = null;
-                        if (selectBox) {
-                            selectBox.strokeColor = 'yellow';
-                        }
                     }
                 },
                 'onMouseDown': function(event) {
@@ -150,6 +146,7 @@
                         console.log(resizeMode);
                     } else if (lastHit) {
                         selectItem(lastHit.item);
+                        selectedItem=lastHit.item;
                         mode = 'dragShape';
                     } else {
                         mode = 'pan';
@@ -159,6 +156,7 @@
                 'onMouseUp': function(event) {
                     if (!dragging && !lastHit) {
                         selectItem(null);
+                        selectedItem = null;
                     }
                 }
             });
