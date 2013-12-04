@@ -56,6 +56,7 @@
                 };
                 handles.update = function() {
                     handles.visible = true;
+                    handles.bringToFront();
                     for (var i in modes) {
                         handles.children[i].position = selectBox.bounds[modes[i]];
                     }
@@ -91,7 +92,6 @@
             };
 
             var lastHit;
-
             var dragging = false;
             var mode = null;
 
