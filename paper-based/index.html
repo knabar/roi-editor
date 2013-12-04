@@ -25,10 +25,7 @@
 
 
 	$(document).ready(function() {
-            // Get a reference to the canvas object
-            var canvas = document.getElementById('myCanvas');
-            // Create an empty project and a view for the canvas:
-            paper.setup(canvas);
+            paper.setup(document.getElementById('myCanvas'));
 
             var image = new paper.Raster("image");
             image.translate(image.width / 2, image.height / 2);
@@ -48,14 +45,23 @@
 
             var selectBox = null;
             var selectedItem;
-            var handlesGroup;
-            var handles;
-
-            var updateHandles = function() {
+            var handles = function() {
+                var handles = new paper.Group({ visible: false });
                 for (var i in modes) {
-                    handles[i].position = selectBox.bounds[modes[i]];
+                    handles.addChild(new paper.Path.Rectangle(0, 0, 11, 11));
                 }
-            };
+                handles.style = {
+                    strokeColor: 'black',
+                    fillColor: 'white'
+                };
+                handles.update = function() {
+                    handles.visible = true;
+                    for (var i in modes) {
+                        handles.children[i].position = selectBox.bounds[modes[i]];
+                    }
+                };
+                return handles;
+            }();
 
             var selectItem = function(item) {
                 if (selectBox) {
@@ -66,23 +72,9 @@
                     selectBox.style = {
                         strokeColor: 'yellow'
                     }
-                    if (!handlesGroup) {
-                        handles = [];
-                        for (var i in modes) {
-                            var p = selectBox.bounds[modes[i]];
-                            handles.push(new paper.Path.Rectangle(p.x - 5, p.y - 5, 11, 11));
-                        }
-                        handlesGroup = new paper.Group(handles);
-                        handlesGroup.style = {
-                            strokeColor: 'black',
-                            fillColor: 'white'
-                        };
-                    } else {
-                        paper.project.activeLayer.addChild(handlesGroup);
-                        updateHandles();
-                    }
+                    handles.update();
                 } else {
-                    handlesGroup.remove();
+                    handles.visible = false;
                 }
                 selectedItem = item;
             }
@@ -113,7 +105,7 @@
                         selectedItem.position.x += event.delta.x;
                         selectedItem.position.y += event.delta.y;
                         selectBox.position = selectedItem.position;
-                        updateHandles();
+                        handles.update();
                     } else if (mode == 'resize') {
                         var options = resizeOptions[resizeMode];
                         var b = selectedItem.bounds;
@@ -121,7 +113,7 @@
                         var new_height = Math.max(b.height + event.delta.y * options[2], ROI_MIN_SIZE);
                         selectedItem.scale(new_width / b.width, new_height / b.height, selectedItem.bounds[options[0]]);
                         selectBox.scale(new_width / b.width, new_height / b.height, selectBox.bounds[options[0]]);
-                        updateHandles();
+                        handles.update();
                     }
                 },
                 'onMouseMove': function(event) {
@@ -136,9 +128,9 @@
                 },
                 'onMouseDown': function(event) {
                     dragging = false;
-                    if (handles) {
+                    if (handles.visible) {
                         for (var i in modes) {
-                            if (handles[i].hitTest(event.point, {'fill': true})) {
+                            if (handles.children[i].hitTest(event.point, {'fill': true})) {
                                 mode = 'resize';
                                 resizeMode = modes[i];
                                 return;
