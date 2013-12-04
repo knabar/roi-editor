@@ -42,7 +42,19 @@
                 paper.project.activeLayer.translate(delta);
             };
 
+            var modes = ['topLeft', 'topCenter', 'topRight', 'leftCenter', 'rightCenter', 'bottomLeft', 'bottomCenter', 'bottomRight'];
+
             var selectBox = null;
+            var selectedItem;
+            var handlesGroup;
+            var handles;
+
+            var updateHandles = function() {
+                for (var i in modes) {
+                    handles[i].position = selectBox.bounds[modes[i]];
+                }
+            };
+
             var selectItem = function(item) {
                 if (selectBox) {
                     selectBox.remove();
@@ -52,26 +64,26 @@
                     selectBox.style = {
                         strokeColor: 'yellow'
                     }
-                }
-            }
-
-            var determineResizeMode = function(point, bounds) {
-                var distance = function(a, b) {
-                    return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
-                };
-                var modes = ['topLeft', 'topCenter', 'topRight', 'leftCenter', 'rightCenter', 'bottomLeft', 'bottomCenter', 'bottomRight'];
-                var mode = null;
-                var dist = null;
-                for (var i in modes) {
-                    m = modes[i];
-                    d = distance(point, bounds[m]);
-                    if (dist === null || d < dist) {
-                        mode = m;
-                        dist = d;
+                    if (!handlesGroup) {
+                        handles = [];
+                        for (var i in modes) {
+                            var p = selectBox.bounds[modes[i]];
+                            handles.push(new paper.Path.Rectangle(p.x - 5, p.y - 5, 11, 11));
+                        }
+                        handlesGroup = new paper.Group(handles);
+                        handlesGroup.style = {
+                            strokeColor: 'black',
+                            fillColor: 'white'
+                        };
+                    } else {
+                        paper.project.activeLayer.addChild(handlesGroup);
+                        updateHandles();
                     }
+                } else {
+                    handlesGroup.remove();
                 }
-                return mode;
-            };
+                selectedItem = item;
+            }
 
             var resizeOptions = {
                 topLeft: ['bottomRight', -1, -1],
@@ -85,13 +97,12 @@
             };
 
             var lastHit;
-            var selectBoxHit;
-            var selectedItem;
+
             var dragging = false;
             var mode = null;
             var resizeMode;
 
-            var panningTool = new paper.Tool({
+            var defaultTool = new paper.Tool({
                 'onMouseDrag': function(event) {
                     dragging = true;
                     if (mode == 'pan') {
@@ -100,21 +111,17 @@
                         selectedItem.position.x += event.delta.x;
                         selectedItem.position.y += event.delta.y;
                         selectBox.position = selectedItem.position;
+                        updateHandles();
                     } else if (mode == 'resize') {
 
                         var options = resizeOptions[resizeMode];
 
                         var b = selectedItem.bounds;
-                        var scale_x = (b.width + event.delta.x * options[1]) / b.width;
-                        var scale_y = (b.height + event.delta.y * options[2]) / b.height;
-
-                        if (scale_x * b.width < 10 || scale_y * b.height < 10) {
-                            return;
-                        }
-
-                        selectedItem.scale(scale_x, scale_y, selectedItem.bounds[options[0]]);
-                        selectBox.scale(scale_x, scale_y, selectBox.bounds[options[0]]);
-
+                        var new_width = Math.max(b.width + event.delta.x * options[1], 10);
+                        var new_height = Math.max(b.height + event.delta.y * options[2], 10);
+                        selectedItem.scale(new_width / b.width, new_height / b.height, selectedItem.bounds[options[0]]);
+                        selectBox.scale(new_width / b.width, new_height / b.height, selectBox.bounds[options[0]]);
+                        updateHandles();
                     }
                 },
                 'onMouseMove': function(event) {
@@ -126,37 +133,28 @@
                         hit.item.strokeColor = 'green';
                     }
                     lastHit = hit;
-
-                    if (selectBox) {
-                        selectBoxHit = selectBox.hitTest(event.point, {'tolerance': 10, 'stroke': true});
-                        if (selectBoxHit) {
-                            selectBox.strokeColor = 'blue';
-                        } else {
-                            selectBox.strokeColor = 'yellow';
-                        }
-                    } else {
-                        selectBoxHit = null;
-                    }
                 },
                 'onMouseDown': function(event) {
                     dragging = false;
-                    if (selectBoxHit) {
-                        mode = 'resize';
-                        resizeMode = determineResizeMode(event.point, selectBox.bounds);
-                        console.log(resizeMode);
-                    } else if (lastHit) {
+                    if (handles) {
+                        for (var i in modes) {
+                            if (handles[i].hitTest(event.point, {'fill': true})) {
+                                mode = 'resize';
+                                resizeMode = modes[i];
+                                return;
+                            }
+                        }
+                    }
+                    if (lastHit) {
                         selectItem(lastHit.item);
-                        selectedItem=lastHit.item;
                         mode = 'dragShape';
                     } else {
                         mode = 'pan';
                     }
-                    console.log('mode is', mode);
                 },
                 'onMouseUp': function(event) {
                     if (!dragging && !lastHit) {
                         selectItem(null);
-                        selectedItem = null;
                     }
                 }
             });
@@ -195,9 +193,9 @@
             });
 
             $("#panning-tool").click(function() {
-                panningTool.activate();
+                defaultTool.activate();
             });
-            panningTool.activate();
+            defaultTool.activate();
 
             $("#zoom-tool").on('change', function(event) {
                 zoom(parseFloat(this.value, 10) / 100);
