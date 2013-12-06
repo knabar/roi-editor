@@ -62,30 +62,75 @@
 
             var selectBox = null;
             var selectedItem;
+            var selectedHandle;
             var handles = function() {
                 var handles = new paper.Group({ visible: false });
-                for (var i in modes) {
-                    handles.addChild(new paper.Path.Rectangle(0, 0, 11, 11));
+                handles.pathmode = false;
+                handles.create = function(pathmode) {
+                    handles.hide();
+                    handles.pathmode = pathmode && selectedItem.segments;
+                    if (handles.pathmode) {
+                        for (var i in selectedItem.segments) {
+                            handles.addChild(new paper.Path.Rectangle(0, 0, 11, 11));
+                        }
+                    } else {
+                        for (var i in modes) {
+                            handles.addChild(new paper.Path.Rectangle(0, 0, 11, 11));
+                        }
+                    }
+                    handles.style = {
+                        strokeColor: 'black',
+                        fillColor: 'white'
+                    };
                 }
-                handles.style = {
-                    strokeColor: 'black',
-                    fillColor: 'white'
-                };
                 handles.update = function() {
                     handles.visible = true;
                     handles.bringToFront();
-                    for (var i in modes) {
-                        handles.children[i].position = selectBox.bounds[modes[i]];
+                    if (handles.pathmode) {
+                        for (var i in selectedItem.segments) {
+                            handles.children[i].position = selectedItem.segments[i].point;
+                        }
+                    } else {
+                        for (var i in modes) {
+                            handles.children[i].position = selectBox.bounds[modes[i]];
+                        }
                     }
                 };
+                handles.getMode = function(point) {
+                    if (handles.pathmode) {
+                        for (var i in handles.children) {
+                            if (handles.children[i].hitTest(point, {'fill': true})) {
+                                selectedHandle = i;
+                                return 'moveNode';
+                            }
+                        }
+                    } else {
+                        for (var i in modes) {
+                            if (handles.children[i].hitTest(point, {'fill': true})) {
+                                return 'resize' + modes[i];
+                            }
+                        }
+                    }
+                    return null;
+                };
+                handles.hide = function() {
+                    handles.visible = false;
+                    handles.removeChildren();
+                }
                 return handles;
             }();
 
-            var selectItem = function(item) {
+            var selectItem = function(item, pathMode) {
+                var pathmode = false;
                 if (selectBox) {
                     selectBox.remove();
+                    if (selectedItem == item) {
+                        pathmode = !handles.pathmode;
+                    }
                 }
+                selectedItem = item;
                 if (item) {
+                    handles.create(pathmode);
                     selectBox = new paper.Path.Rectangle(item.strokeBounds);
                     selectBox.style = {
                         strokeColor: 'yellow'
@@ -94,7 +139,6 @@
                 } else {
                     handles.visible = false;
                 }
-                selectedItem = item;
             }
 
             var resizeOptions = {
@@ -130,6 +174,15 @@
                         selectedItem.scale(new_width / b.width, new_height / b.height, selectedItem.bounds[options[0]]);
                         selectBox.scale(new_width / b.width, new_height / b.height, selectBox.bounds[options[0]]);
                         handles.update();
+                    } else if (mode == 'moveNode') {
+                        var p = selectedItem.segments[selectedHandle].point;
+                        selectedItem.segments[selectedHandle].point = new paper.Point(p.x + event.delta.x, p.y + event.delta.y);
+                        handles.update();
+                        selectBox.remove();
+                        selectBox = new paper.Path.Rectangle(selectedItem.strokeBounds);
+                        selectBox.style = {
+                            strokeColor: 'yellow'
+                        }
                     }
                 },
                 'onMouseMove': function(event) {
@@ -145,11 +198,9 @@
                 'onMouseDown': function(event) {
                     dragging = false;
                     if (handles.visible) {
-                        for (var i in modes) {
-                            if (handles.children[i].hitTest(event.point, {'fill': true})) {
-                                mode = 'resize' + modes[i];
-                                return;
-                            }
+                        mode = handles.getMode(event.point);
+                        if (mode) {
+                            return;
                         }
                     }
                     if (lastHit) {
@@ -163,6 +214,7 @@
                     if (!dragging && !lastHit) {
                         selectItem(null);
                     }
+                    mode = null;
                 }
             });
 
