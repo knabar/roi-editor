@@ -34,27 +34,18 @@ roiEditor = function(element, roiGroupLoader) {
         handles.update = function() {
             handles.visible = true;
             handles.bringToFront();
-            if (handles.pathmode) {
-                for (var i in selectedItem.segments) {
-                    handles.children[i].position = selectedItem.segments[i].point;
-                }
-            } else {
-                for (var i in modes) {
-                    handles.children[i].position = selectBox.bounds[modes[i]];
-                }
+            for (var i in handles.children) {
+                handles.children[i].position = (handles.pathmode ?
+                    selectedItem.segments[i].point : selectBox.bounds[modes[i]]);
             }
         };
         handles.getMode = function(point) {
-            if (handles.pathmode) {
-                for (var i in handles.children) {
-                    if (handles.children[i].hitTest(point, {'fill': true})) {
+            for (var i in handles.children) {
+                if (handles.children[i].hitTest(point, {'fill': true})) {
+                    if (handles.pathmode) {
                         selectedHandle = i;
                         return 'moveNode';
-                    }
-                }
-            } else {
-                for (var i in modes) {
-                    if (handles.children[i].hitTest(point, {'fill': true})) {
+                    } else {
                         return 'resize' + modes[i];
                     }
                 }
@@ -64,7 +55,7 @@ roiEditor = function(element, roiGroupLoader) {
         handles.hide = function() {
             handles.visible = false;
             handles.removeChildren();
-        }
+        };
         return handles;
     }();
 
@@ -80,14 +71,12 @@ roiEditor = function(element, roiGroupLoader) {
         if (item) {
             handles.create(pathmode);
             selectBox = new paper.Path.Rectangle(item.strokeBounds);
-            selectBox.style = {
-                strokeColor: 'yellow'
-            }
+            selectBox.style.strokeColor = 'yellow';
             handles.update();
         } else {
             handles.visible = false;
         }
-    }
+    };
 
     var resizeOptions = {
         topLeft: ['bottomRight', -1, -1],
@@ -114,7 +103,7 @@ roiEditor = function(element, roiGroupLoader) {
                 selectedItem.position.y += event.delta.y;
                 selectBox.position = selectedItem.position;
                 handles.update();
-            } else if (mode.indexOf('resize') == 0) {
+            } else if (mode.indexOf('resize') === 0) {
                 var options = resizeOptions[mode.substring(6)];
                 var b = selectedItem.bounds;
                 var new_width = Math.max(b.width + event.delta.x * options[1], ROI_MIN_SIZE);
@@ -128,9 +117,7 @@ roiEditor = function(element, roiGroupLoader) {
                 handles.update();
                 selectBox.remove();
                 selectBox = new paper.Path.Rectangle(selectedItem.strokeBounds);
-                selectBox.style = {
-                    strokeColor: 'yellow'
-                }
+                selectBox.style.strokeColor = 'yellow';
             }
         },
         'onMouseMove': function(event) {
