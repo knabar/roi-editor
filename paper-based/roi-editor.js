@@ -3,20 +3,33 @@ roiEditor = function(element, roiGroupLoader) {
 
     var roiGroup = roiGroupLoader();
 
+    var modes = ['topLeft', 'topCenter', 'topRight', 'leftCenter', 'rightCenter', 'bottomLeft', 'bottomCenter', 'bottomRight'];
+    var resizeOptions = {
+        topLeft: ['bottomRight', -1, -1],
+        topCenter: ['bottomCenter', 0, -1],
+        topRight: ['bottomLeft', 1, -1],
+        leftCenter: ['rightCenter', -1, 0],
+        rightCenter: ['leftCenter', 1, 0],
+        bottomLeft: ['topRight', -1, 1],
+        bottomCenter: ['topCenter', 0, 1],
+        bottomRight: ['topLeft', 1, 1]
+    };
+    var selectBox = null;
+    var selectedItem = null;
+    var selectedHandle = null;
+    var lastHit = null;
+    var dragging = false;
+    var mode = null;
+
     var moveAndCheckBounds = function(delta) {
-        var bounds = paper.project.activeLayer.bounds.clone();
-        delta.x = Math.max(delta.x, paper.view.bounds.width - bounds.width - bounds.x);
-        delta.y = Math.max(delta.y, paper.view.bounds.height - bounds.height - bounds.y);
-        delta.x = Math.min(delta.x, paper.view.bounds.x - bounds.x);
-        delta.y = Math.min(delta.y, paper.view.bounds.y - bounds.y);
+        var b = paper.project.activeLayer.bounds.clone();
+        delta.x = Math.max(delta.x, paper.view.bounds.width - b.width - b.x);
+        delta.y = Math.max(delta.y, paper.view.bounds.height - b.height - b.y);
+        delta.x = Math.min(delta.x, paper.view.bounds.x - b.x);
+        delta.y = Math.min(delta.y, paper.view.bounds.y - b.y);
         paper.project.activeLayer.translate(delta);
     };
 
-    var modes = ['topLeft', 'topCenter', 'topRight', 'leftCenter', 'rightCenter', 'bottomLeft', 'bottomCenter', 'bottomRight'];
-
-    var selectBox = null;
-    var selectedItem;
-    var selectedHandle;
     var handles = function() {
         var handles = new paper.Group({ visible: false });
         handles.pathmode = false;
@@ -32,16 +45,14 @@ roiEditor = function(element, roiGroupLoader) {
             };
         };
         handles.update = function() {
-            handles.visible = true;
-            handles.bringToFront();
+            handles.bringToFront().visible = true;
             for (var i in handles.children) {
-                handles.children[i].position = (handles.pathmode ?
-                    selectedItem.segments[i].point : selectBox.bounds[modes[i]]);
+                handles.children[i].position = (handles.pathmode ? selectedItem.segments[i].point : selectBox.bounds[modes[i]]);
             }
         };
         handles.getMode = function(point) {
             for (var i in handles.children) {
-                if (handles.children[i].hitTest(point, {'fill': true})) {
+                if (handles.children[i].hitTest(point, { 'fill': true })) {
                     if (handles.pathmode) {
                         selectedHandle = i;
                         return 'moveNode';
@@ -60,12 +71,9 @@ roiEditor = function(element, roiGroupLoader) {
     }();
 
     var selectItem = function(item, pathMode) {
-        var pathmode = false;
+        var pathmode = (selectedItem == item) && !handles.pathmode; // switch modes when re-selecting the same item
         if (selectBox) {
             selectBox.remove();
-            if (selectedItem == item) {
-                pathmode = !handles.pathmode;
-            }
         }
         selectedItem = item;
         if (item) {
@@ -78,50 +86,33 @@ roiEditor = function(element, roiGroupLoader) {
         }
     };
 
-    var resizeOptions = {
-        topLeft: ['bottomRight', -1, -1],
-        topCenter: ['bottomCenter', 0, -1],
-        topRight: ['bottomLeft', 1, -1],
-        leftCenter: ['rightCenter', -1, 0],
-        rightCenter: ['leftCenter', 1, 0],
-        bottomLeft: ['topRight', -1, 1],
-        bottomCenter: ['topCenter', 0, 1],
-        bottomRight: ['topLeft', 1, 1]
-    };
-
-    var lastHit;
-    var dragging = false;
-    var mode = null;
-
     var defaultTool = new paper.Tool({
         'onMouseDrag': function(event) {
             dragging = true;
             if (mode == 'pan') {
                 moveAndCheckBounds(event.delta.clone());
-            } else if (mode == 'dragShape') {
-                selectedItem.position.x += event.delta.x;
-                selectedItem.position.y += event.delta.y;
-                selectBox.position = selectedItem.position;
+            } else {
+                if (mode == 'dragShape') {
+                    selectedItem.position = selectedItem.position.add(event.delta);
+                    selectBox.position = selectedItem.position;
+                } else if (mode.indexOf('resize') === 0) {
+                    var ro = resizeOptions[mode.substring(6)];
+                    var b = selectedItem.bounds;
+                    var nw = Math.max(b.width + event.delta.x * ro[1], ROI_MIN_SIZE);
+                    var nh = Math.max(b.height + event.delta.y * ro[2], ROI_MIN_SIZE);
+                    selectedItem.scale(nw / b.width, nh / b.height, selectedItem.bounds[ro[0]]);
+                    selectBox.scale(nw / b.width, nh / b.height, selectBox.bounds[ro[0]]);
+                } else if (mode == 'moveNode') {
+                    selectedItem.segments[selectedHandle].point = selectedItem.segments[selectedHandle].point.add(event.delta);
+                    selectBox.remove();
+                    selectBox = new paper.Path.Rectangle(selectedItem.strokeBounds);
+                    selectBox.style.strokeColor = 'yellow';
+                }
                 handles.update();
-            } else if (mode.indexOf('resize') === 0) {
-                var options = resizeOptions[mode.substring(6)];
-                var b = selectedItem.bounds;
-                var new_width = Math.max(b.width + event.delta.x * options[1], ROI_MIN_SIZE);
-                var new_height = Math.max(b.height + event.delta.y * options[2], ROI_MIN_SIZE);
-                selectedItem.scale(new_width / b.width, new_height / b.height, selectedItem.bounds[options[0]]);
-                selectBox.scale(new_width / b.width, new_height / b.height, selectBox.bounds[options[0]]);
-                handles.update();
-            } else if (mode == 'moveNode') {
-                var p = selectedItem.segments[selectedHandle].point;
-                selectedItem.segments[selectedHandle].point = new paper.Point(p.x + event.delta.x, p.y + event.delta.y);
-                handles.update();
-                selectBox.remove();
-                selectBox = new paper.Path.Rectangle(selectedItem.strokeBounds);
-                selectBox.style.strokeColor = 'yellow';
             }
         },
         'onMouseMove': function(event) {
-            var hit = roiGroup.hitTest(event.point, {'tolerance': 10, 'fill': true, 'stroke': true});
+            var hit = roiGroup.hitTest(event.point, { 'tolerance': 10, 'fill': true, 'stroke': true });
             if (lastHit) {
                 lastHit.item.strokeColor = 'black';
             }
@@ -160,18 +151,14 @@ roiEditor = function(element, roiGroupLoader) {
             level = paper.view.zoom / 1.1;
         }
         if (level) {
-            // get coordinates under mouse before and after zoom...
-            var before = paper.view.viewToProject(x, y);
+            var before = paper.view.viewToProject(x, y); // get coordinates under mouse before and after zoom...
             paper.view.zoom = level;
-            // ...then scroll to keep the same point under the mouse
-            moveAndCheckBounds(paper.view.viewToProject(x, y).subtract(before));
+            moveAndCheckBounds(paper.view.viewToProject(x, y).subtract(before)); // ...then scroll to keep the point under the mouse
             paper.view.draw();
             $("#zoom-tool").val(parseInt(level * 100, 10));
         }
     };
 
-
-    // hook up event handlers
 
     paper.view.element.addEventListener('mousewheel', function(ev) {
         zoom(undefined, ev.pageX, ev.pageY, -ev.wheelDelta);
@@ -183,7 +170,7 @@ roiEditor = function(element, roiGroupLoader) {
     $("#toggle-rois").click(function() {
         roiGroup.visible = !roiGroup.visible;
         selectItem(null);
-        paper.view.draw(); // draw immediately
+        paper.view.draw(); // must draw immediately to avoid visual delay
     });
 
     $("#panning-tool").click(function() {
