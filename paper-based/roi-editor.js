@@ -140,7 +140,6 @@ roiEditor = function(element, roiGroupLoader) {
             if (!dragging && !lastHit) {
                 selectItem(null);
             }
-            mode = null;
         }
     });
 
@@ -173,9 +172,6 @@ roiEditor = function(element, roiGroupLoader) {
         paper.view.draw(); // must draw immediately to avoid visual delay
     });
 
-    $("#panning-tool").click(function() {
-        defaultTool.activate();
-    });
     defaultTool.activate();
 
     $("#zoom-tool").on('change', function(event) {
