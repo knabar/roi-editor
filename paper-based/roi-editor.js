@@ -36,8 +36,10 @@ roiEditor = function(element, roiGroupLoader) {
         handles.create = function(pathmode) {
             handles.hide();
             handles.pathmode = pathmode && selectedItem.segments;
+            var symbol = handles.pathmode ? new paper.Path.Rectangle(0, 0, 11, 11) :
+                                            new paper.Path.Circle(new paper.Point(0, 0), 6);
             for (var i in (handles.pathmode ? selectedItem.segments : modes)) {
-                handles.addChild(new paper.Path.Rectangle(0, 0, 11, 11));
+                handles.addChild(symbol.clone());
             }
             handles.style = {
                 strokeColor: 'black',
