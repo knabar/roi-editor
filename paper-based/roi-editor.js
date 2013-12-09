@@ -2,6 +2,20 @@ roiEditor = function(element, roiGroupLoader) {
     paper.setup(element);
 
     var roiGroup = roiGroupLoader();
+    var roiLabels = new paper.Group();
+
+    // create text labels for ROIs
+    for (var i in roiGroup.children) {
+        var label = roiGroup.children[i].data.label;
+        if (label) {
+            var text = new paper.PointText(roiGroup.children[i].bounds.center);
+            text.justification = 'center';
+            text.fillColor = 'black';
+            text.content = label;
+            roiGroup.children[i].data.text = text;
+            roiLabels.addChild(text);
+        }
+    }
 
     var modes = ['topLeft', 'topCenter', 'topRight', 'leftCenter', 'rightCenter', 'bottomLeft', 'bottomCenter', 'bottomRight'];
     var resizeOptions = {
@@ -110,6 +124,9 @@ roiEditor = function(element, roiGroupLoader) {
                     selectBox = new paper.Path.Rectangle(selectedItem.strokeBounds);
                     selectBox.style.strokeColor = 'yellow';
                 }
+                if (selectedItem.data.text) {
+                    selectedItem.data.text.position = selectedItem.bounds.center;
+                }
                 handles.update();
             }
         },
@@ -170,8 +187,19 @@ roiEditor = function(element, roiGroupLoader) {
 
     $("#toggle-rois").click(function() {
         roiGroup.visible = !roiGroup.visible;
+        roiLabels.visible = roiGroup.visible;
         selectItem(null);
         paper.view.draw(); // must draw immediately to avoid visual delay
+    });
+
+    $("#edit-roi-label").click(function() {
+        if (selectedItem) {
+            var newLabel = prompt('Label:', selectedItem.data.label);
+            if (newLabel !== null) {
+                selectedItem.data.label = selectedItem.data.text.content = newLabel;
+                paper.view.draw();
+            }
+        }
     });
 
     defaultTool.activate();

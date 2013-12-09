@@ -17,9 +17,11 @@
         var loadROIs = function() {
             var test = new paper.Path.Rectangle(200, 200, 100, 100);
             test.style = roiStyle;
+            test.data.label = 'Rectangle';
 
             var test2 = new paper.Path.Ellipse(50, 100, 100, 50);
             test2.style = roiStyle;
+            test2.data.label = 'Ellipse';
 
             var myPath = new paper.Path();
             myPath.add(new paper.Point(350, 75));
@@ -28,6 +30,7 @@
             myPath.add(new paper.Point(380, 65));
             myPath.closed = true;
             myPath.style = roiStyle;
+            myPath.data.label = 'Closed Path';
 
 
             var myPath2 = new paper.Path();
@@ -37,6 +40,7 @@
             myPath2.add(new paper.Point(380, 265));
             myPath2.closed = false;
             myPath2.strokeColor = 'black';
+            myPath2.data.label = 'Open Path';
 
             return new paper.Group([test, test2, myPath, myPath2]);
         };
@@ -58,6 +62,8 @@
         <br /><br /><br />
 
         <button id="toggle-rois">Toggle ROIs</button>
+
+        <button id="edit-roi-label">Edit Label</button>
 
         Zoom: <input type="number" min="0" max="1000" id="zoom-tool" value="100" step="10" />
 
