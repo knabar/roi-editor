@@ -4,17 +4,23 @@ roiEditor = function(element, roiGroupLoader) {
     var roiGroup = roiGroupLoader();
     var roiLabels = new paper.Group();
 
+    var roiStyle = {
+        strokeColor: 'black',
+        fillColor: 'rgba(255, 0, 0, 0.2)'
+    };
+
+    var createTextLabel = function(item, label) {
+        var text = new paper.PointText(item.bounds.center);
+        text.justification = 'center';
+        text.fillColor = 'black';
+        text.content = label || item.data.label || '';
+        item.data.text = text;
+        return text;
+    };
+
     // create text labels for ROIs
     for (var i in roiGroup.children) {
-        var label = roiGroup.children[i].data.label;
-        if (label) {
-            var text = new paper.PointText(roiGroup.children[i].bounds.center);
-            text.justification = 'center';
-            text.fillColor = 'black';
-            text.content = label;
-            roiGroup.children[i].data.text = text;
-            roiLabels.addChild(text);
-        }
+        roiLabels.addChild(createTextLabel(roiGroup.children[i]));
     }
 
     var modes = ['topLeft', 'topCenter', 'topRight', 'leftCenter', 'rightCenter', 'bottomLeft', 'bottomCenter', 'bottomRight'];
@@ -93,9 +99,9 @@ roiEditor = function(element, roiGroupLoader) {
         }
         selectedItem = item;
         if (item) {
-            handles.create(pathmode);
             selectBox = new paper.Path.Rectangle(item.strokeBounds);
             selectBox.style.strokeColor = 'yellow';
+            handles.create(pathmode);
             handles.update();
         } else {
             handles.visible = false;
@@ -162,6 +168,32 @@ roiEditor = function(element, roiGroupLoader) {
         }
     });
 
+    var newItem = null;
+    var addRoiTool = new paper.Tool({
+        'onMouseDrag': function(event) {
+            dragging = true;
+            var item = new paper.Path.Rectangle(event.downPoint, event.point);
+            item.style = roiStyle;
+            item.removeOnDrag();
+            item.removeOnUp();
+        },
+        'onMouseDown': function(event) {
+            selectItem(null);
+            dragging = false;
+        },
+        'onMouseUp': function(event) {
+            if (dragging) {
+                var item = new paper.Path.Rectangle(event.downPoint, event.point);
+                item.style = roiStyle;
+                item.data.label = '';
+                roiGroup.addChild(item);
+                roiLabels.addChild(createTextLabel(item));
+                selectItem(item);
+                defaultTool.activate();
+            }
+        }
+    });
+
     var zoom = function(level, x, y, delta) {
         if (!level && delta < 0) {
             level = paper.view.zoom * 1.1;
@@ -211,9 +243,17 @@ roiEditor = function(element, roiGroupLoader) {
         }
     });
 
-    defaultTool.activate();
+    $("#edit-roi").click(function() {
+        defaultTool.activate();
+    });
+
+    $("#add-rectangle-roi").click(function() {
+        addRoiTool.activate();
+    });
 
     $("#zoom-tool").on('change', function(event) {
         zoom(parseFloat(this.value, 10) / 100);
     });
+
+    defaultTool.activate();
 };
