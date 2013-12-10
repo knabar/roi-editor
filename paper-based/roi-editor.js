@@ -202,6 +202,15 @@ roiEditor = function(element, roiGroupLoader) {
         }
     });
 
+    $("#delete-roi").click(function() {
+        if (selectedItem) {
+            selectedItem.remove();
+            selectedItem.data.text.remove();
+            selectItem(null);
+            paper.view.draw();
+        }
+    });
+
     defaultTool.activate();
 
     $("#zoom-tool").on('change', function(event) {
