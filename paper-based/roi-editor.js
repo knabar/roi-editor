@@ -9,6 +9,51 @@ roiEditor = function(element, roiGroupLoader) {
         fillColor: 'rgba(255, 0, 0, 0.2)'
     };
 
+    var history = function(undoButton, redoButton) {
+        var history = {};
+        var undos = [];
+        var redos = [];
+        var updateButtons = function() {
+            var undolabel = undos.length ? undos[undos.length - 1].label : '';
+            undoButton.text("Undo " + undolabel).prop("disabled", !undolabel);
+            var redolabel = redos.length ? redos[redos.length - 1].label : '';
+            redoButton.text("Redo " + redolabel).prop("disabled", !redolabel);
+        };
+        history.add = function(label, undofunc, redofunc, runredo) {
+            undos.push({ 'label': label, 'undo': undofunc, 'redo': redofunc });
+            redos = [];
+            if (runredo) {
+                redofunc();
+                paper.view.draw();
+            }
+            updateButtons();
+        };
+        var undoRedo = function(fromList, toList, action) {
+            if (fromList.length) {
+                var funcs = fromList.pop();
+                toList.push(funcs);
+                funcs[action]();
+                updateButtons();
+                paper.view.draw();
+            }
+        };
+        history.undo = function() {
+            undoRedo(undos, redos, 'undo');
+        };
+        history.redo = function() {
+            undoRedo(redos, undos, 'redo');
+        };
+        history.cleanupWrapper = function(item, pathMode, func) {
+            return function() {
+                func();
+                item.data.text.position = item.bounds.center;
+                selectItem(item, pathMode);
+            }
+        };
+        updateButtons();
+        return history;
+    }($("#undo"), $("#redo"));
+
     var createTextLabel = function(item, label) {
         var text = new paper.PointText(item.bounds.center);
         text.justification = 'center';
@@ -92,8 +137,9 @@ roiEditor = function(element, roiGroupLoader) {
         return handles;
     }();
 
-    var selectItem = function(item, pathMode) {
-        var pathmode = (selectedItem == item) && !handles.pathmode; // switch modes when re-selecting the same item
+    var selectItem = function(item, forceMode) {
+        var pathmode = (forceMode !== undefined) ? forceMode :
+            (selectedItem == item) && !handles.pathmode; // switch modes when re-selecting the same item
         if (selectBox) {
             selectBox.remove();
         }
@@ -108,6 +154,7 @@ roiEditor = function(element, roiGroupLoader) {
         }
     };
 
+    var undoData = null;
     var defaultTool = new paper.Tool({
         'onMouseDrag': function(event) {
             dragging = true;
@@ -130,9 +177,7 @@ roiEditor = function(element, roiGroupLoader) {
                     selectBox = new paper.Path.Rectangle(selectedItem.strokeBounds);
                     selectBox.style.strokeColor = 'yellow';
                 }
-                if (selectedItem.data.text) {
-                    selectedItem.data.text.position = selectedItem.bounds.center;
-                }
+                selectedItem.data.text.position = selectedItem.bounds.center;
                 handles.update();
             }
         },
@@ -151,18 +196,61 @@ roiEditor = function(element, roiGroupLoader) {
             if (handles.visible) {
                 mode = handles.getMode(event.point);
                 if (mode) {
+                    if (mode == 'moveNode') {
+                        undoData = selectedItem.segments[selectedHandle].point.clone();
+                    } else if (mode.indexOf('resize') === 0) {
+                        undoData = selectedItem.bounds.clone();
+                    }
                     return;
                 }
             }
             if (lastHit) {
                 selectItem(lastHit.item);
                 mode = 'dragShape';
+                undoData = selectedItem.position;
             } else {
                 mode = 'pan';
             }
         },
         'onMouseUp': function(event) {
-            if (!dragging && !lastHit) {
+            if (dragging) {
+                if (mode == 'dragShape') {
+                    var item = selectedItem;
+                    var oldPosition = undoData;
+                    var newPosition = item.position;
+                    history.add(
+                        'move',
+                        history.cleanupWrapper(item, false, function() { // undo move
+                            item.position = oldPosition;
+                        }), history.cleanupWrapper(item, false, function() { // redo move
+                            item.position = newPosition;
+                        }));
+                } else if (mode.indexOf('resize') === 0) {
+                    var item = selectedItem;
+                    var xratio = undoData.width / item.bounds.width;
+                    var yratio = undoData.height / item.bounds.height;
+                    var anchor = resizeOptions[mode.substring(6)][0];
+                    history.add(
+                        'resize',
+                        history.cleanupWrapper(item, false, function() { // undo resize
+                            selectedItem.scale(xratio, yratio, item.bounds[anchor]);
+                        }), history.cleanupWrapper(item, false, function() { // redo resize
+                            selectedItem.scale(1 / xratio, 1 / yratio, item.bounds[anchor]);
+                        }));
+                } else if (mode == 'moveNode') {
+                    var item = selectedItem;
+                    var handle = selectedHandle;
+                    var oldPosition = undoData;
+                    var newPosition = item.segments[handle].point.clone();
+                    history.add(
+                        'move node',
+                        history.cleanupWrapper(item, true, function() { // undo move node
+                            item.segments[handle].point = oldPosition;
+                        }), history.cleanupWrapper(item, true, function() { // redo move node
+                            item.segments[handle].point = newPosition;
+                        }));
+                }
+            } else if (!lastHit) {
                 selectItem(null);
             }
         }
@@ -186,9 +274,16 @@ roiEditor = function(element, roiGroupLoader) {
                 var item = new paper.Path.Rectangle(event.downPoint, event.point);
                 item.style = roiStyle;
                 item.data.label = '';
-                roiGroup.addChild(item);
-                roiLabels.addChild(createTextLabel(item));
-                selectItem(item);
+                history.add(
+                    'create',
+                    function() { // undo create
+                            item.remove();
+                            selectItem(null);
+                        }, function() { // redo create
+                            roiGroup.addChild(item);
+                            roiLabels.addChild(createTextLabel(item));
+                            selectItem(item);
+                        }, true);
                 defaultTool.activate();
             }
         }
@@ -228,18 +323,33 @@ roiEditor = function(element, roiGroupLoader) {
         if (selectedItem) {
             var newLabel = prompt('Label:', selectedItem.data.label);
             if (newLabel !== null) {
-                selectedItem.data.label = selectedItem.data.text.content = newLabel;
-                paper.view.draw();
+                var item = selectedItem;
+                var oldLabel = item.data.label;
+                history.add(
+                    "rename",
+                    function() { // undo rename
+                        item.data.label = item.data.text.content = oldLabel;
+                    }, function() { // redo rename
+                        item.data.label = item.data.text.content = newLabel;
+                    }, true);
             }
         }
     });
 
     $("#delete-roi").click(function() {
         if (selectedItem) {
-            selectedItem.remove();
-            selectedItem.data.text.remove();
-            selectItem(null);
-            paper.view.draw();
+            var item = selectedItem;
+            history.add(
+                "delete",
+                function() { // undo delete
+                    roiGroup.addChild(item);
+                    roiLabels.addChild(item.data.text);
+                    selectItem(item);
+                }, function() { // redo delete
+                    item.remove();
+                    item.data.text.remove();
+                    selectItem(null);
+                }, true);
         }
     });
 
@@ -249,6 +359,14 @@ roiEditor = function(element, roiGroupLoader) {
 
     $("#add-rectangle-roi").click(function() {
         addRoiTool.activate();
+    });
+
+    $("#undo").click(function() {
+        history.undo();
+    });
+
+    $("#redo").click(function() {
+        history.redo();
     });
 
     $("#zoom-tool").on('change', function(event) {
