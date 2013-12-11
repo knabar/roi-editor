@@ -256,11 +256,10 @@ roiEditor = function(element, roiGroupLoader) {
         }
     });
 
-    var newItem = null;
     var addRoiTool = new paper.Tool({
         'onMouseDrag': function(event) {
             dragging = true;
-            var item = new paper.Path.Rectangle(event.downPoint, event.point);
+            var item = new addRoiTool.createItem(event);
             item.style = roiStyle;
             item.removeOnDrag();
             item.removeOnUp();
@@ -271,7 +270,7 @@ roiEditor = function(element, roiGroupLoader) {
         },
         'onMouseUp': function(event) {
             if (dragging) {
-                var item = new paper.Path.Rectangle(event.downPoint, event.point);
+                var item = addRoiTool.createItem(event);
                 item.style = roiStyle;
                 item.data.label = '';
                 history.add(
@@ -288,6 +287,11 @@ roiEditor = function(element, roiGroupLoader) {
             }
         }
     });
+    addRoiTool.activateWith = function(createItemFunc) {
+        addRoiTool.createItem = createItemFunc;
+        addRoiTool.activate();
+    };
+
 
     var zoom = function(level, x, y, delta) {
         if (!level && delta < 0) {
@@ -358,7 +362,15 @@ roiEditor = function(element, roiGroupLoader) {
     });
 
     $("#add-rectangle-roi").click(function() {
-        addRoiTool.activate();
+        addRoiTool.activateWith(function(event) {
+            return new paper.Path.Rectangle(event.downPoint, event.point);
+        });
+    });
+
+    $("#add-ellipse-roi").click(function() {
+        addRoiTool.activateWith(function(event) {
+            return new paper.Path.Ellipse(event.downPoint, event.point);
+        });
     });
 
     $("#undo").click(function() {
