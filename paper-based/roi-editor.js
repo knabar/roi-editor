@@ -13,7 +13,6 @@ roiEditor = function(element, roiGroupLoader) {
     var roiLabels = new paper.Group();
     var roiGroup = new paper.Group();
     roiGroupLoader(function(shape) {
-        shape.data.strokeColor = shape.style.strokeColor; // remember so it can be reset after highlighting
         roiGroup.addChild(shape);
         roiLabels.addChild(createTextLabel(shape));
     });
@@ -184,12 +183,11 @@ roiEditor = function(element, roiGroupLoader) {
         'onMouseMove': function(event) {
             var hit = roiGroup.hitTest(event.point, { 'tolerance': 10, 'fill': true, 'stroke': true });
             if (lastHit) {
-                lastHit.item.strokeColor = lastHit.item.data.strokeColor;
+                lastHit.item.style.strokeColor = lastHit.item.data.strokeColor;
             }
             if (hit) {
-                var highlight = new Color(hit.item.strokeColor);
-                highlight.hue(highlight.hue() + 180);
-                hit.item.strokeColor = highlight;
+                hit.item.style.strokeColor = hit.item.data.original.strokeColor;
+                hit.item.style.strokeColor.hue += 180;
             }
             lastHit = hit;
         },

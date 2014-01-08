@@ -2,7 +2,6 @@
 <html>
 <head>
 <script type="text/javascript" src="jquery-1.7.2.js"></script>
-<script type="text/javascript" src="color/Color.js"></script>
 <script type="text/javascript" src="paperjs-v0.9.15/dist/paper.js"></script>
 <script type="text/javascript" src="roi-editor.js"></script>
 <!-- Define inlined JavaScript -->
@@ -15,14 +14,14 @@
             var loaders = {
                 'Rectangle': function(shape) {
                     var rect = new paper.Path.Rectangle(shape.x, shape.y, shape.width, shape.height);
+                    rect.data.original = shape;
 
-                    var strokeColor = new Color(shape.strokeColor);
-                    strokeColor.alpha(shape.strokeAlpa);
-                    rect.style.strokeColor = strokeColor.getRGBA();
+                    rect.style.strokeColor = shape.strokeColor;
+                    rect.style.strokeColor.alpha = shape.strokeAlpha;
+                    rect.style.strokeWidth = shape.stokeWidth;
 
-                    var fillColor = new Color(shape.fillColor);
-                    fillColor.alpha(shape.fillAlpha);
-                    rect.style.fillColor = fillColor.getRGBA();
+                    rect.style.fillColor = shape.fillColor;
+                    rect.style.fillColor.alpha = shape.fillAlpha;
 
                     rect.data.label = shape.textValue;
 
