@@ -183,7 +183,8 @@ roiEditor = function(element, roiGroupLoader) {
         'onMouseMove': function(event) {
             var hit = roiGroup.hitTest(event.point, { 'tolerance': 10, 'fill': true, 'stroke': true });
             if (lastHit) {
-                lastHit.item.style.strokeColor = lastHit.item.data.strokeColor;
+                lastHit.item.style.strokeColor = lastHit.item.data.original.strokeColor;
+                lastHit.item.style.strokeColor.alpha = lastHit.item.data.original.strokeAlpha;
             }
             if (hit) {
                 hit.item.style.strokeColor = hit.item.data.original.strokeColor;
