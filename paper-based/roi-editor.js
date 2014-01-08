@@ -1,8 +1,22 @@
 roiEditor = function(element, roiGroupLoader) {
     paper.setup(element);
 
-    var roiGroup = roiGroupLoader();
+    var createTextLabel = function(item, label) {
+        var text = new paper.PointText(item.bounds.center);
+        text.justification = 'center';
+        text.fillColor = 'black';
+        text.content = label || item.data.label || '';
+        item.data.text = text;
+        return text;
+    };
+
     var roiLabels = new paper.Group();
+    var roiGroup = new paper.Group();
+    roiGroupLoader(function(shape) {
+        shape.data.strokeColor = shape.style.strokeColor; // remember so it can be reset after highlighting
+        roiGroup.addChild(shape);
+        roiLabels.addChild(createTextLabel(shape));
+    });
 
     var roiStyle = {
         strokeColor: 'black',
@@ -53,20 +67,6 @@ roiEditor = function(element, roiGroupLoader) {
         updateButtons();
         return history;
     }($("#undo"), $("#redo"));
-
-    var createTextLabel = function(item, label) {
-        var text = new paper.PointText(item.bounds.center);
-        text.justification = 'center';
-        text.fillColor = 'black';
-        text.content = label || item.data.label || '';
-        item.data.text = text;
-        return text;
-    };
-
-    // create text labels for ROIs
-    for (var i in roiGroup.children) {
-        roiLabels.addChild(createTextLabel(roiGroup.children[i]));
-    }
 
     var modes = ['topLeft', 'topCenter', 'topRight', 'leftCenter', 'rightCenter', 'bottomLeft', 'bottomCenter', 'bottomRight'];
     var resizeOptions = {
@@ -184,10 +184,12 @@ roiEditor = function(element, roiGroupLoader) {
         'onMouseMove': function(event) {
             var hit = roiGroup.hitTest(event.point, { 'tolerance': 10, 'fill': true, 'stroke': true });
             if (lastHit) {
-                lastHit.item.strokeColor = 'black';
+                lastHit.item.strokeColor = lastHit.item.data.strokeColor;
             }
             if (hit) {
-                hit.item.strokeColor = 'green';
+                var highlight = new Color(hit.item.strokeColor);
+                highlight.hue(highlight.hue() + 180);
+                hit.item.strokeColor = highlight;
             }
             lastHit = hit;
         },

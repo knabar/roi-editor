@@ -1,0 +1,83 @@
+[{
+        "shapes": [{
+                "fontStyle": "Normal",
+                "fillAlpha": 0.25,
+                "fontFamily": "sans-serif",
+                "strokeAlpha": 0.765625,
+                "height": 67.0,
+                "width": 73.0,
+                "strokeWidth": 1,
+                "fontSize": 12,
+                "theZ": 0,
+                "textValue": "Test",
+                "y": 13.0,
+                "x": 8.0,
+                "strokeColor": "#c4c4c4",
+                "theT": 0,
+                "type": "Rectangle",
+                "id": 1,
+                "fillColor": "#000000"
+            }
+        ],
+        "id": 1
+    }, {
+        "shapes": [{
+                "strokeWidth": 1,
+                "fillAlpha": 0.25,
+                "strokeAlpha": 0.765625,
+                "rx": 59.0,
+                "ry": 33.5,
+                "transform": "none",
+                "cy": 139.5,
+                "cx": 125.0,
+                "theZ": 0,
+                "strokeColor": "#c4c4c4",
+                "theT": 0,
+                "type": "Ellipse",
+                "id": 2,
+                "fillColor": "#000000"
+            }
+        ],
+        "id": 2
+    }, {
+        "shapes": [{
+                "fontStyle": "Normal",
+                "fillAlpha": 0.25,
+                "strokeAlpha": 0.765625,
+                "textValue": "Point",
+                "fontFamily": "sans-serif",
+                "cy": 153.0,
+                "cx": 25.0,
+                "fontSize": 12,
+                "theZ": 0,
+                "strokeColor": "#c4c4c4",
+                "theT": 0,
+                "type": "Point",
+                "id": 3,
+                "strokeWidth": 1,
+                "fillColor": "#000000"
+            }
+        ],
+        "id": 3
+    }, {
+        "shapes": [{
+                "fontStyle": "Normal",
+                "fillAlpha": 0.25,
+                "strokeAlpha": 0.765625,
+                "textValue": "Invisible point",
+                "fontFamily": "sans-serif",
+                "cy": 36.0,
+                "cx": 133.0,
+                "fontSize": 12,
+                "theZ": 0,
+                "strokeColor": "#c4c4c4",
+                "theT": 0,
+                "type": "Point",
+                "id": 4,
+                "strokeWidth": 1,
+                "fillColor": "#000000"
+            }
+        ],
+        "id": 4
+    }
+]

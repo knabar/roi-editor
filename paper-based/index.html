@@ -2,6 +2,7 @@
 <html>
 <head>
 <script type="text/javascript" src="jquery-1.7.2.js"></script>
+<script type="text/javascript" src="color/Color.js"></script>
 <script type="text/javascript" src="paperjs-v0.9.15/dist/paper.js"></script>
 <script type="text/javascript" src="roi-editor.js"></script>
 <!-- Define inlined JavaScript -->
@@ -9,46 +10,46 @@
 
         var ROI_MIN_SIZE = 20;
 
-        roiStyle = {
-            strokeColor: 'black',
-            fillColor: 'rgba(255, 0, 0, 0.2)'
-        };
+        var loadROIsFromJson = function(shapeCallback) {
 
-        var loadROIs = function() {
-            var test = new paper.Path.Rectangle(200, 200, 100, 100);
-            test.style = roiStyle;
-            test.data.label = 'Rectangle';
+            var loaders = {
+                'Rectangle': function(shape) {
+                    var rect = new paper.Path.Rectangle(shape.x, shape.y, shape.width, shape.height);
 
-            var test2 = new paper.Path.Ellipse(50, 100, 100, 50);
-            test2.style = roiStyle;
-            test2.data.label = 'Ellipse';
+                    var strokeColor = new Color(shape.strokeColor);
+                    strokeColor.alpha(shape.strokeAlpa);
+                    rect.style.strokeColor = strokeColor.getRGBA();
 
-            var myPath = new paper.Path();
-            myPath.add(new paper.Point(350, 75));
-            myPath.add(new paper.Point(400, 25));
-            myPath.add(new paper.Point(450, 75));
-            myPath.add(new paper.Point(380, 65));
-            myPath.closed = true;
-            myPath.style = roiStyle;
-            myPath.data.label = 'Closed Path';
+                    var fillColor = new Color(shape.fillColor);
+                    fillColor.alpha(shape.fillAlpha);
+                    rect.style.fillColor = fillColor.getRGBA();
 
+                    rect.data.label = shape.textValue;
 
-            var myPath2 = new paper.Path();
-            myPath2.add(new paper.Point(350, 275));
-            myPath2.add(new paper.Point(400, 225));
-            myPath2.add(new paper.Point(450, 275));
-            myPath2.add(new paper.Point(380, 265));
-            myPath2.closed = false;
-            myPath2.strokeColor = 'black';
-            myPath2.data.label = 'Open Path';
+                    shapeCallback(rect);
+                }
+            };
 
-            return new paper.Group([test, test2, myPath, myPath2]);
+            $.getJSON(
+                "test.json",
+                function(data) {
+                    for (roi in data) {
+                        for (idx in data[roi].shapes) {
+                            var shape = data[roi].shapes[idx];
+                            if (shape.theZ === 0 && shape.theT === 0 &&
+                                loaders[shape.type] !== undefined) {
+                                loaders[shape.type](shape);
+                            }
+                        }
+                    }
+                }
+            )
         };
 
 
 	$(document).ready(function() {
 
-            roiEditor(document.getElementById('myCanvas'), loadROIs);
+            roiEditor(document.getElementById('myCanvas'), loadROIsFromJson);
 
             var image = new paper.Raster("image").sendToBack();
             image.translate(image.width / 2, image.height / 2);
