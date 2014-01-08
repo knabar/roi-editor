@@ -11,21 +11,31 @@
 
         var loadROIsFromJson = function(shapeCallback) {
 
+            var processShape = function(obj, shape) {
+                obj.data.original = shape;
+
+                obj.style.strokeColor = shape.strokeColor;
+                obj.style.strokeColor.alpha = shape.strokeAlpha;
+                obj.style.strokeWidth = shape.stokeWidth;
+
+                obj.style.fillColor = shape.fillColor;
+                obj.style.fillColor.alpha = shape.fillAlpha;
+
+                obj.data.label = shape.textValue;
+
+                shapeCallback(obj);
+            };
+
             var loaders = {
                 'Rectangle': function(shape) {
-                    var rect = new paper.Path.Rectangle(shape.x, shape.y, shape.width, shape.height);
-                    rect.data.original = shape;
-
-                    rect.style.strokeColor = shape.strokeColor;
-                    rect.style.strokeColor.alpha = shape.strokeAlpha;
-                    rect.style.strokeWidth = shape.stokeWidth;
-
-                    rect.style.fillColor = shape.fillColor;
-                    rect.style.fillColor.alpha = shape.fillAlpha;
-
-                    rect.data.label = shape.textValue;
-
-                    shapeCallback(rect);
+                    processShape(new paper.Path.Rectangle(
+                        shape.x, shape.y, shape.width, shape.height), shape);
+                },
+                'Ellipse': function(shape) {
+                    processShape(new paper.Path.Ellipse({
+                        center: [shape.cx, shape.cy],
+                        radius: [shape.rx, shape.ry]
+                    }), shape);
                 }
             };
 
@@ -41,6 +51,7 @@
                             }
                         }
                     }
+                    paper.view.draw();
                 }
             )
         };
