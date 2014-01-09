@@ -4,6 +4,7 @@
                 "fillAlpha": 0.25,
                 "fontFamily": "sans-serif",
                 "strokeAlpha": 0.765625,
+                "transform": "none",
                 "height": 67.0,
                 "width": 73.0,
                 "strokeWidth": 1,
@@ -44,6 +45,7 @@
                 "fontStyle": "Normal",
                 "fillAlpha": 0.25,
                 "strokeAlpha": 0.765625,
+                "transform": "none",
                 "textValue": "Point",
                 "fontFamily": "sans-serif",
                 "cy": 153.0,
@@ -64,6 +66,7 @@
                 "fontStyle": "Normal",
                 "fillAlpha": 0.25,
                 "strokeAlpha": 0.765625,
+                "transform": "none",
                 "textValue": "Invisible point",
                 "fontFamily": "sans-serif",
                 "cy": 36.0,
@@ -79,5 +82,65 @@
             }
         ],
         "id": 4
+    }, {
+        "shapes": [{
+                "y2": 189.0,
+                "theT": 0,
+                "fillAlpha": 0.25,
+                "fontFamily": "sans-serif",
+                "strokeAlpha": 0.765625,
+                "transform": "none",
+                "textValue": "Line",
+                "y1": 200.0,
+                "fontStyle": "Normal",
+                "fontSize": 12,
+                "theZ": 0,
+                "x2": 172.0,
+                "strokeColor": "#c4c4c4",
+                "x1": 61.0,
+                "type": "Line",
+                "id": 7,
+                "strokeWidth": 1,
+                "fillColor": "#000000"
+            }
+        ],
+        "id": 7
+    }, {
+        "shapes": [{
+                "strokeWidth": 1,
+                "fillAlpha": 0.25,
+                "strokeAlpha": 0.765625,
+                "transform": "none",
+                "points": "M 54 178 L 53 156 L 67 170 L 76 188 z",
+                "theZ": 0,
+                "strokeColor": "#c4c4c4",
+                "theT": 0,
+                "type": "Polygon",
+                "id": 8,
+                "fillColor": "#000000"
+            }
+        ],
+        "id": 8
+    }, {
+        "shapes": [{
+                "fontStyle": "Normal",
+                "fillAlpha": 0.25,
+                "strokeAlpha": 0.765625,
+                "transform": "none",
+                "textValue": "Hello World",
+                "fontFamily": "sans-serif",
+                "strokeWidth": 1,
+                "fontSize": 12,
+                "theZ": 0,
+                "y": 88.0,
+                "x": 122.0,
+                "strokeColor": "#c4c4c4",
+                "theT": 0,
+                "type": "Label",
+                "id": 9,
+                "fillColor": "#000000"
+            }
+        ],
+        "id": 9
     }
 ]

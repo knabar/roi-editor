@@ -35,6 +35,12 @@ var loadROIsFromJson = function(shapeCallback) {
                 center: [shape.cx, shape.cy],
                 radius: [10, 10]
             }), shape);
+        },
+        'Line': function(shape) {
+            processShape(new paper.Path.Line(
+                [shape.x1, shape.y1],
+                [shape.x2, shape.y2]
+            ), shape);
         }
     };
 
