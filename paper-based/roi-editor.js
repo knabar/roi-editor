@@ -52,7 +52,7 @@ var loadROIsFromJson = function(shapeCallback) {
             }
             paper.view.draw();
         }
-    )
+    );
 };
 
 
@@ -120,7 +120,7 @@ roiEditor = function(element, roiGroupLoader) {
                 func();
                 item.data.text.position = item.bounds.center;
                 selectItem(item, pathMode);
-            }
+            };
         };
         updateButtons();
         return history;
@@ -285,10 +285,11 @@ roiEditor = function(element, roiGroupLoader) {
         },
         'onMouseUp': function(event) {
             if (dragging) {
+                var item = selectedItem;
+                var oldPosition, newPosition;
                 if (mode == 'dragShape') {
-                    var item = selectedItem;
-                    var oldPosition = undoData;
-                    var newPosition = item.position;
+                    oldPosition = undoData;
+                    newPosition = item.position;
                     history.add(
                         'move',
                         history.cleanupWrapper(item, false, function() { // undo move
@@ -297,7 +298,6 @@ roiEditor = function(element, roiGroupLoader) {
                             item.position = newPosition;
                         }));
                 } else if (mode.indexOf('resize') === 0) {
-                    var item = selectedItem;
                     var xratio = undoData.width / item.bounds.width;
                     var yratio = undoData.height / item.bounds.height;
                     var anchor = resizeOptions[mode.substring(6)][0];
@@ -309,10 +309,9 @@ roiEditor = function(element, roiGroupLoader) {
                             selectedItem.scale(1 / xratio, 1 / yratio, item.bounds[anchor]);
                         }));
                 } else if (mode == 'moveNode') {
-                    var item = selectedItem;
                     var handle = selectedHandle;
-                    var oldPosition = undoData;
-                    var newPosition = item.segments[handle].point.clone();
+                    oldPosition = undoData;
+                    newPosition = item.segments[handle].point.clone();
                     history.add(
                         'move node',
                         history.cleanupWrapper(item, true, function() { // undo move node
