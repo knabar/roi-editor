@@ -41,6 +41,15 @@ var loadROIsFromJson = function(shapeCallback) {
                 [shape.x1, shape.y1],
                 [shape.x2, shape.y2]
             ), shape);
+        },
+        'Polygon': function(shape) {
+            var polygon = new paper.Path();
+            polygon.closed = true;
+            var points = shape.points.split(" ");
+            for (var p = 1; p < points.length; p += 3) {
+                polygon.add(new paper.Point(parseInt(points[p], 10), parseInt(points[p + 1], 10)));
+            }
+            processShape(polygon, shape);
         }
     };
 
