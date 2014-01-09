@@ -1,3 +1,61 @@
+
+var ROI_MIN_SIZE = 20;
+
+
+var loadROIsFromJson = function(shapeCallback) {
+
+    var processShape = function(obj, shape) {
+        obj.data.original = shape;
+
+        obj.style.strokeColor = shape.strokeColor;
+        obj.style.strokeColor.alpha = shape.strokeAlpha;
+        obj.style.strokeWidth = shape.stokeWidth;
+
+        obj.style.fillColor = shape.fillColor;
+        obj.style.fillColor.alpha = shape.fillAlpha;
+
+        obj.data.label = shape.textValue;
+
+        shapeCallback(obj);
+    };
+
+    var loaders = {
+        'Rectangle': function(shape) {
+            processShape(new paper.Path.Rectangle(
+                shape.x, shape.y, shape.width, shape.height), shape);
+        },
+        'Ellipse': function(shape) {
+            processShape(new paper.Path.Ellipse({
+                center: [shape.cx, shape.cy],
+                radius: [shape.rx, shape.ry]
+            }), shape);
+        },
+        'Point': function(shape) {
+            processShape(new paper.Path.Ellipse({
+                center: [shape.cx, shape.cy],
+                radius: [10, 10]
+            }), shape);
+        }
+    };
+
+    $.getJSON(
+        "test.json",
+        function(data) {
+            for (roi in data) {
+                for (idx in data[roi].shapes) {
+                    var shape = data[roi].shapes[idx];
+                    if (shape.theZ === 0 && shape.theT === 0 &&
+                        loaders[shape.type] !== undefined) {
+                        loaders[shape.type](shape);
+                    }
+                }
+            }
+            paper.view.draw();
+        }
+    )
+};
+
+
 roiEditor = function(element, roiGroupLoader) {
     paper.setup(element);
 
