@@ -187,13 +187,20 @@ roiEditor = function(element, roiGroupLoader) {
         },
         'onMouseMove': function(event) {
             var hit = roiGroup.hitTest(event.point, { 'tolerance': 10, 'fill': true, 'stroke': true });
-            if (lastHit) { // TODO: need to remember the original color somehow, since new objects don't have an 'original' property
-                lastHit.item.style.strokeColor = lastHit.item.data.original.strokeColor;
-                lastHit.item.style.strokeColor.alpha = lastHit.item.data.original.strokeAlpha;
+            if (hit && lastHit && hit.item.id == lastHit.item.id) {
+                return; // still on same object
+            }
+            if (lastHit) {
+                lastHit.item.style.strokeColor = lastHit.item.data.strokeColor.clone();
             }
             if (hit) {
-                hit.item.style.strokeColor = hit.item.data.original.strokeColor;
-                hit.item.style.strokeColor.hue += 180;
+                if (!hit.item.data.strokeColor) {
+                    hit.item.data.strokeColor = hit.item.style.strokeColor.clone(); // save color
+                }
+                var color = hit.item.data.strokeColor.clone();
+                color.hue += 180;
+                color.saturation = color.brightness = color.alpha = 1;
+                hit.item.style.strokeColor = color;
             }
             lastHit = hit;
         },
