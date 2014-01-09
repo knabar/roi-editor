@@ -36,6 +36,12 @@
                         center: [shape.cx, shape.cy],
                         radius: [shape.rx, shape.ry]
                     }), shape);
+                },
+                'Point': function(shape) {
+                    processShape(new paper.Path.Ellipse({
+                        center: [shape.cx, shape.cy],
+                        radius: [10, 10]
+                    }), shape);
                 }
             };
 
@@ -83,6 +89,8 @@
         <button id="add-rectangle-roi">Rectangle</button>
 
         <button id="add-ellipse-roi">Ellipse</button>
+
+        <button id="add-point-roi">Point</button>
 
         <button id="undo"></button>
 

@@ -15,6 +15,7 @@ roiEditor = function(element, roiGroupLoader) {
     roiGroupLoader(function(shape) {
         roiGroup.addChild(shape);
         roiLabels.addChild(createTextLabel(shape));
+        shape.data.type = shape.data.original.type;
     });
 
     var roiStyle = {
@@ -146,8 +147,12 @@ roiEditor = function(element, roiGroupLoader) {
         if (item) {
             selectBox = new paper.Path.Rectangle(item.strokeBounds);
             selectBox.style.strokeColor = 'yellow';
-            handles.create(pathmode);
-            handles.update();
+            if (item.data.type != 'Point') { // no handles for points
+                handles.create(pathmode);
+                handles.update();
+            } else {
+                handles.hide();
+            }
         } else {
             handles.visible = false;
         }
@@ -182,7 +187,7 @@ roiEditor = function(element, roiGroupLoader) {
         },
         'onMouseMove': function(event) {
             var hit = roiGroup.hitTest(event.point, { 'tolerance': 10, 'fill': true, 'stroke': true });
-            if (lastHit) {
+            if (lastHit) { // TODO: need to remember the original color somehow, since new objects don't have an 'original' property
                 lastHit.item.style.strokeColor = lastHit.item.data.original.strokeColor;
                 lastHit.item.style.strokeColor.alpha = lastHit.item.data.original.strokeAlpha;
             }
@@ -293,6 +298,28 @@ roiEditor = function(element, roiGroupLoader) {
         addRoiTool.activate();
     };
 
+    var addPointRoiTool = new paper.Tool({
+        'onMouseUp': function(event) {
+            var point = new paper.Path.Ellipse({
+                center: event.point,
+                radius: [10, 10]
+            });
+            point.style = roiStyle;
+            point.data.type = 'Point';
+            point.data.label = '';
+            history.add(
+                'create',
+                function() { // undo create
+                        point.remove();
+                        selectItem(null);
+                    }, function() { // redo create
+                        roiGroup.addChild(point);
+                        roiLabels.addChild(createTextLabel(point));
+                        selectItem(point);
+                    }, true);
+            defaultTool.activate();
+        }
+    });
 
     var zoom = function(level, x, y, delta) {
         if (!level && delta < 0) {
@@ -364,14 +391,22 @@ roiEditor = function(element, roiGroupLoader) {
 
     $("#add-rectangle-roi").click(function() {
         addRoiTool.activateWith(function(event) {
-            return new paper.Path.Rectangle(event.downPoint, event.point);
+            var shape = new paper.Path.Rectangle(event.downPoint, event.point);
+            shape.data.type = 'Rectangle';
+            return shape;
         });
     });
 
     $("#add-ellipse-roi").click(function() {
         addRoiTool.activateWith(function(event) {
-            return new paper.Path.Ellipse(event.downPoint, event.point);
+            var shape = new paper.Path.Ellipse(event.downPoint, event.point);
+            shape.data.type = 'Ellipse';
+            return shape;
         });
+    });
+
+    $("#add-point-roi").click(function() {
+        addPointRoiTool.activate();
     });
 
     $("#undo").click(function() {
