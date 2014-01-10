@@ -50,6 +50,13 @@ var loadROIsFromJson = function(shapeCallback) {
                 polygon.add(new paper.Point(parseInt(points[p], 10), parseInt(points[p + 1], 10)));
             }
             processShape(polygon, shape);
+        },
+        'Label': function(shape) {
+            var text = new paper.PointText(shape.x, shape.y);
+            text.content = shape.textValue;
+            text.justification = 'center';
+            text.data.text = text; // to make changing label work on object itself
+            processShape(text, shape);
         }
     };
 
@@ -87,7 +94,9 @@ roiEditor = function(element, roiGroupLoader) {
     var roiGroup = new paper.Group();
     roiGroupLoader(function(shape) {
         roiGroup.addChild(shape);
-        roiLabels.addChild(createTextLabel(shape));
+        if (shape.type != 'point-text') {
+            roiLabels.addChild(createTextLabel(shape));
+        }
         shape.data.type = shape.data.original.type;
     });
 
@@ -433,15 +442,17 @@ roiEditor = function(element, roiGroupLoader) {
     $("#edit-roi-label").click(function() {
         if (selectedItem) {
             var newLabel = prompt('Label:', selectedItem.data.label);
-            if (newLabel !== null) {
+            if (newLabel !== null && (newLabel !== '' || selectedItem.type != 'point-text')) {
                 var item = selectedItem;
                 var oldLabel = item.data.label;
                 history.add(
                     "rename",
                     function() { // undo rename
                         item.data.label = item.data.text.content = oldLabel;
+                        selectItem(item);
                     }, function() { // redo rename
                         item.data.label = item.data.text.content = newLabel;
+                        selectItem(item);
                     }, true);
             }
         }
