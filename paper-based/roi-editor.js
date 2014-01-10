@@ -409,6 +409,30 @@ roiEditor = function(element, roiGroupLoader) {
         }
     });
 
+    var addTextRoiTool = new paper.Tool({
+        'onMouseUp': function(event) {
+            var newLabel = prompt('Label:', '');
+            if (newLabel) {
+                var text = new paper.PointText(event.point);
+                text.content = newLabel;
+                text.justification = 'center';
+                text.data.text = text; // to make changing label work on object itself
+                text.style = roiStyle;
+                text.data.type = 'Label';
+                history.add(
+                    'create',
+                    function() { // undo create
+                            text.remove();
+                            selectItem(null);
+                        }, function() { // redo create
+                            roiGroup.addChild(text);
+                            selectItem(text);
+                        }, true);
+                defaultTool.activate();
+            }
+        }
+    });
+
     var zoom = function(level, x, y, delta) {
         if (!level && delta < 0) {
             level = paper.view.zoom * 1.1;
@@ -505,6 +529,10 @@ roiEditor = function(element, roiGroupLoader) {
             shape.data.type = 'Line';
             return shape;
         })
+    });
+
+    $("#add-text-roi").click(function() {
+        addTextRoiTool.activate();
     });
 
     $("#undo").click(function() {
