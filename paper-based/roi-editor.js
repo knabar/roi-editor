@@ -328,9 +328,9 @@ roiEditor = function(element, roiGroupLoader) {
                     history.add(
                         'resize',
                         history.cleanupWrapper(item, false, function() { // undo resize
-                            selectedItem.scale(xratio, yratio, item.bounds[anchor]);
+                            item.scale(xratio, yratio, item.bounds[anchor]);
                         }), history.cleanupWrapper(item, false, function() { // redo resize
-                            selectedItem.scale(1 / xratio, 1 / yratio, item.bounds[anchor]);
+                            item.scale(1 / xratio, 1 / yratio, item.bounds[anchor]);
                         }));
                 } else if (mode == 'moveNode') {
                     var handle = selectedHandle;
