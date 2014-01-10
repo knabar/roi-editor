@@ -182,7 +182,7 @@ roiEditor = function(element, roiGroupLoader) {
         handles.pathmode = false;
         handles.create = function(pathmode) {
             handles.hide();
-            handles.pathmode = pathmode && selectedItem.segments;
+            handles.pathmode = (selectedItem.data.type == 'Line') || (pathmode && selectedItem.segments);
             var symbol = handles.pathmode ? new paper.Path.Rectangle(0, 0, 11, 11) :
                                             new paper.Path.Circle(new paper.Point(0, 0), 6);
             for (var i in (handles.pathmode ? selectedItem.segments : modes)) {
@@ -497,6 +497,14 @@ roiEditor = function(element, roiGroupLoader) {
 
     $("#add-point-roi").click(function() {
         addPointRoiTool.activate();
+    });
+
+    $("#add-line-roi").click(function() {
+        addRoiTool.activateWith(function(event) {
+            var shape = new paper.Path([event.downPoint, event.point]);
+            shape.data.type = 'Line';
+            return shape;
+        })
     });
 
     $("#undo").click(function() {
