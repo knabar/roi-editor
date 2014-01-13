@@ -14,7 +14,7 @@ var loadROIsFromJson = function(shapeCallback) {
         obj.style.fillColor = shape.fillColor;
         obj.style.fillColor.alpha = shape.fillAlpha;
 
-        obj.data.label = shape.textValue;
+        obj.data.label = shape.textValue || '';
 
         shapeCallback(obj);
     };
@@ -590,6 +590,15 @@ roiEditor = function(element, roiGroupLoader) {
 
     $("#zoom-tool").on('change', function(event) {
         zoom(parseFloat(this.value, 10) / 100);
+    });
+
+    $("#update-roi-table").click(function() {
+        $("#roi-table tbody").empty();
+        for (var idx in roiGroup.children) {
+            var roi = roiGroup.children[idx];
+            $("#roi-table tbody").append("<tr><td>" + roi.data.original.id + "</td><td>" + roi.data.type + "</td><td>" + roi.data.label + "</td></tr>");
+        }
+        console.log(roiGroup.firstChild)
     });
 
     defaultTool.activate();
