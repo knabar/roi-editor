@@ -433,6 +433,46 @@ roiEditor = function(element, roiGroupLoader) {
         }
     });
 
+    var addPolygonRoiTool = new paper.Tool({
+        'onMouseDrag': function(event) {
+        },
+        'onMouseMove': function(event) {
+            if (addPolygonRoiTool.current) {
+                var item = new paper.Path.Line(addPolygonRoiTool.current.lastSegment.point, event.point);
+                item.strokeColor = 'red';
+                item.removeOnMove();
+                item = new paper.Path.Line(event.point, addPolygonRoiTool.current.firstSegment.point);
+                item.strokeColor = 'red';
+                item.removeOnMove();
+            }
+        },
+        'onMouseDown': function(event) {
+            if (!addPolygonRoiTool.current) {
+                addPolygonRoiTool.current = new paper.Path();
+                addPolygonRoiTool.current.closed = true;
+                addPolygonRoiTool.current.style = roiStyle;
+                addPolygonRoiTool.current.data.type = 'Polygon';
+            }
+            addPolygonRoiTool.current.add(event.point);
+            if (addPolygonRoiTool.current.segments.length == 2) {
+                var polygon = addPolygonRoiTool.current;
+                roiGroup.addChild(polygon);
+                roiLabels.addChild(createTextLabel(polygon));
+                history.add(
+                    'create',
+                    function() { // undo create
+                        polygon.remove();
+                        selectItem(null);
+                    }, function() { // redo create
+                        roiGroup.addChild(polygon);
+                        selectItem(polygon);
+                    });
+            }
+        },
+        'onMouseUp': function(event) {
+        }
+    });
+
     var zoom = function(level, x, y, delta) {
         if (!level && delta < 0) {
             level = paper.view.zoom * 1.1;
@@ -529,6 +569,11 @@ roiEditor = function(element, roiGroupLoader) {
             shape.data.type = 'Line';
             return shape;
         })
+    });
+
+    $("#add-polygon-roi").click(function() {
+        addPolygonRoiTool.current = null;
+        addPolygonRoiTool.activate();
     });
 
     $("#add-text-roi").click(function() {
