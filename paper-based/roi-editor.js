@@ -4,9 +4,7 @@ var ROI_MIN_SIZE = 20;
 
 var loadROIsFromJson = function(shapeCallback) {
 
-    var processShape = function(obj, shape) {
-        obj.data.original = shape;
-
+    var processShape = function(obj, shape, groupId) {
         obj.style.strokeColor = shape.strokeColor;
         obj.style.strokeColor.alpha = shape.strokeAlpha;
         obj.style.strokeWidth = shape.stokeWidth;
@@ -21,26 +19,22 @@ var loadROIsFromJson = function(shapeCallback) {
 
     var loaders = {
         'Rectangle': function(shape) {
-            processShape(new paper.Path.Rectangle(
-                shape.x, shape.y, shape.width, shape.height), shape);
+            return new paper.Path.Rectangle(shape.x, shape.y, shape.width, shape.height);
         },
         'Ellipse': function(shape) {
-            processShape(new paper.Path.Ellipse({
+            return new paper.Path.Ellipse({
                 center: [shape.cx, shape.cy],
                 radius: [shape.rx, shape.ry]
-            }), shape);
+            });
         },
         'Point': function(shape) {
-            processShape(new paper.Path.Ellipse({
+            return new paper.Path.Ellipse({
                 center: [shape.cx, shape.cy],
                 radius: [10, 10]
-            }), shape);
+            });
         },
         'Line': function(shape) {
-            processShape(new paper.Path.Line(
-                [shape.x1, shape.y1],
-                [shape.x2, shape.y2]
-            ), shape);
+            return new paper.Path.Line([shape.x1, shape.y1], [shape.x2, shape.y2]);
         },
         'Polygon': function(shape) {
             var polygon = new paper.Path();
@@ -49,14 +43,14 @@ var loadROIsFromJson = function(shapeCallback) {
             for (var p = 1; p < points.length; p += 3) {
                 polygon.add(new paper.Point(parseInt(points[p], 10), parseInt(points[p + 1], 10)));
             }
-            processShape(polygon, shape);
+            return polygon;
         },
         'Label': function(shape) {
             var text = new paper.PointText(shape.x, shape.y);
             text.content = shape.textValue;
             text.justification = 'center';
             text.data.text = text; // to make changing label work on object itself
-            processShape(text, shape);
+            return text;
         }
     };
 
@@ -68,7 +62,12 @@ var loadROIsFromJson = function(shapeCallback) {
                     var shape = data[roi].shapes[idx];
                     if (shape.theZ === 0 && shape.theT === 0 &&
                         loaders[shape.type] !== undefined) {
-                        loaders[shape.type](shape);
+                        obj = loaders[shape.type](shape);
+                        processShape(obj, shape);
+                        // keep references to original data
+                        obj.data.original = shape;
+                        obj.data.group = data[roi];
+                        obj.data.type = obj.data.original.type;
                     }
                 }
             }
@@ -97,7 +96,6 @@ roiEditor = function(element, roiGroupLoader) {
         if (shape.type != 'point-text') {
             roiLabels.addChild(createTextLabel(shape));
         }
-        shape.data.type = shape.data.original.type;
     });
 
     var roiStyle = {
@@ -350,6 +348,11 @@ roiEditor = function(element, roiGroupLoader) {
         }
     });
 
+    var initializeRoi = function(roi) {
+        roi.style = roiStyle;
+        roi.data.label = '';
+    };
+
     var addRoiTool = new paper.Tool({
         'onMouseDrag': function(event) {
             dragging = true;
@@ -365,8 +368,7 @@ roiEditor = function(element, roiGroupLoader) {
         'onMouseUp': function(event) {
             if (dragging) {
                 var item = addRoiTool.createItem(event);
-                item.style = roiStyle;
-                item.data.label = '';
+                initializeRoi(item);
                 history.add(
                     'create',
                     function() { // undo create
@@ -392,9 +394,8 @@ roiEditor = function(element, roiGroupLoader) {
                 center: event.point,
                 radius: [10, 10]
             });
-            point.style = roiStyle;
             point.data.type = 'Point';
-            point.data.label = '';
+            initializeRoi(point);
             history.add(
                 'create',
                 function() { // undo create
@@ -416,9 +417,9 @@ roiEditor = function(element, roiGroupLoader) {
                 var text = new paper.PointText(event.point);
                 text.content = newLabel;
                 text.justification = 'center';
-                text.data.text = text; // to make changing label work on object itself
-                text.style = roiStyle;
                 text.data.type = 'Label';
+                text.data.text = text; // to make changing label work on object itself
+                initializeRoi(text);
                 history.add(
                     'create',
                     function() { // undo create
@@ -450,8 +451,8 @@ roiEditor = function(element, roiGroupLoader) {
             if (!addPolygonRoiTool.current) {
                 addPolygonRoiTool.current = new paper.Path();
                 addPolygonRoiTool.current.closed = true;
-                addPolygonRoiTool.current.style = roiStyle;
                 addPolygonRoiTool.current.data.type = 'Polygon';
+                initializeRoi(addPolygonRoiTool.current);
             }
             addPolygonRoiTool.current.add(event.point);
             if (addPolygonRoiTool.current.segments.length == 2) {
@@ -467,6 +468,9 @@ roiEditor = function(element, roiGroupLoader) {
                         roiGroup.addChild(polygon);
                         selectItem(polygon);
                     });
+            }
+            if (addPolygonRoiTool.current.segments.length >= 2) {
+                addPolygonRoiTool.current.data.text.position = addPolygonRoiTool.current.bounds.center;
             }
         },
         'onMouseUp': function(event) {
