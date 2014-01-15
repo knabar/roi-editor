@@ -12,8 +12,6 @@ var loadROIsFromJson = function(shapeCallback) {
         obj.style.fillColor = shape.fillColor;
         obj.style.fillColor.alpha = shape.fillAlpha;
 
-        obj.data.label = shape.textValue || '';
-
         shapeCallback(obj);
     };
 
@@ -63,11 +61,10 @@ var loadROIsFromJson = function(shapeCallback) {
                     if (shape.theZ === 0 && shape.theT === 0 &&
                         loaders[shape.type] !== undefined) {
                         obj = loaders[shape.type](shape);
-                        processShape(obj, shape);
                         // keep references to original data
                         obj.data.original = shape;
                         obj.data.group = data[roi];
-                        obj.data.type = obj.data.original.type;
+                        processShape(obj, shape);
                     }
                 }
             }
@@ -84,7 +81,7 @@ roiEditor = function(element, roiGroupLoader) {
         var text = new paper.PointText(item.bounds.center);
         text.justification = 'center';
         text.fillColor = 'black';
-        text.content = label || item.data.label || '';
+        text.content = label || item.data.original.textValue || '';
         item.data.text = text;
         return text;
     };
@@ -97,11 +94,6 @@ roiEditor = function(element, roiGroupLoader) {
             roiLabels.addChild(createTextLabel(shape));
         }
     });
-
-    var roiStyle = {
-        strokeColor: 'black',
-        fillColor: 'rgba(255, 0, 0, 0.2)'
-    };
 
     var history = function(undoButton, redoButton) {
         var history = {};
@@ -180,7 +172,7 @@ roiEditor = function(element, roiGroupLoader) {
         handles.pathmode = false;
         handles.create = function(pathmode) {
             handles.hide();
-            handles.pathmode = (selectedItem.data.type == 'Line') || (pathmode && selectedItem.segments);
+            handles.pathmode = (selectedItem.data.original.type == 'Line') || (pathmode && selectedItem.segments);
             var symbol = handles.pathmode ? new paper.Path.Rectangle(0, 0, 11, 11) :
                                             new paper.Path.Circle(new paper.Point(0, 0), 6);
             for (var i in (handles.pathmode ? selectedItem.segments : modes)) {
@@ -194,7 +186,13 @@ roiEditor = function(element, roiGroupLoader) {
         handles.update = function() {
             handles.bringToFront().visible = true;
             for (var i in handles.children) {
-                handles.children[i].position = (handles.pathmode ? selectedItem.segments[i].point : selectBox.bounds[modes[i]]);
+                try {
+                    handles.children[i].position = (handles.pathmode ? selectedItem.segments[i].point : selectBox.bounds[modes[i]]);
+                } catch(e) {
+                    console.log(e);
+                    console.log(handles);
+                    throw e;
+                }
             }
         };
         handles.getMode = function(point) {
@@ -227,7 +225,7 @@ roiEditor = function(element, roiGroupLoader) {
         if (item) {
             selectBox = new paper.Path.Rectangle(item.strokeBounds);
             selectBox.style.strokeColor = 'yellow';
-            if (item.data.type != 'Point') { // no handles for points
+            if (item.data.original.type != 'Point') { // no handles for points
                 handles.create(pathmode);
                 handles.update();
             } else {
@@ -348,18 +346,34 @@ roiEditor = function(element, roiGroupLoader) {
         }
     });
 
-    var initializeRoi = function(roi) {
-        roi.style = roiStyle;
-        roi.data.label = '';
+    var initializeRoi = function(roi, type) {
+        roi.data.original = {
+            "fontStyle": "Normal",
+            "fillAlpha": 0.25,
+            "fontFamily": "sans-serif",
+            "strokeAlpha": 0.765625,
+            "transform": "none",
+            "strokeWidth": 1,
+            "fontSize": 12,
+            "textValue": "",
+            "strokeColor": "#c4c4c4",
+            "fillColor": "#000000",
+            "type": type,
+            "theZ": 0,
+            "theT": 0
+        };
+        roi.strokeColor = roi.data.original.strokeColor;
+        roi.strokeColor.alpha = roi.data.original.strokeAlpha;
+        roi.strokeWidth = roi.data.original.strokeWidth;
+        roi.fillColor = roi.data.original.fillColor;
+        roi.fillColor.alpha = roi.data.original.fillAlpha;
+        return roi;
     };
 
     var addRoiTool = new paper.Tool({
         'onMouseDrag': function(event) {
             dragging = true;
-            var item = new addRoiTool.createItem(event);
-            item.style = roiStyle;
-            item.removeOnDrag();
-            item.removeOnUp();
+            initializeRoi.apply(this, new addRoiTool.createItem(event)).removeOnDrag().removeOnUp();
         },
         'onMouseDown': function(event) {
             selectItem(null);
@@ -367,8 +381,7 @@ roiEditor = function(element, roiGroupLoader) {
         },
         'onMouseUp': function(event) {
             if (dragging) {
-                var item = addRoiTool.createItem(event);
-                initializeRoi(item);
+                var item = initializeRoi.apply(this, addRoiTool.createItem(event));
                 history.add(
                     'create',
                     function() { // undo create
@@ -394,8 +407,7 @@ roiEditor = function(element, roiGroupLoader) {
                 center: event.point,
                 radius: [10, 10]
             });
-            point.data.type = 'Point';
-            initializeRoi(point);
+            initializeRoi(point, 'Point');
             history.add(
                 'create',
                 function() { // undo create
@@ -417,9 +429,8 @@ roiEditor = function(element, roiGroupLoader) {
                 var text = new paper.PointText(event.point);
                 text.content = newLabel;
                 text.justification = 'center';
-                text.data.type = 'Label';
                 text.data.text = text; // to make changing label work on object itself
-                initializeRoi(text);
+                initializeRoi(text, 'Label');
                 history.add(
                     'create',
                     function() { // undo create
@@ -435,8 +446,6 @@ roiEditor = function(element, roiGroupLoader) {
     });
 
     var addPolygonRoiTool = new paper.Tool({
-        'onMouseDrag': function(event) {
-        },
         'onMouseMove': function(event) {
             if (addPolygonRoiTool.current) {
                 var item = new paper.Path.Line(addPolygonRoiTool.current.lastSegment.point, event.point);
@@ -451,8 +460,7 @@ roiEditor = function(element, roiGroupLoader) {
             if (!addPolygonRoiTool.current) {
                 addPolygonRoiTool.current = new paper.Path();
                 addPolygonRoiTool.current.closed = true;
-                addPolygonRoiTool.current.data.type = 'Polygon';
-                initializeRoi(addPolygonRoiTool.current);
+                initializeRoi(addPolygonRoiTool.current, 'Polygon');
             }
             addPolygonRoiTool.current.add(event.point);
             if (addPolygonRoiTool.current.segments.length == 2) {
@@ -472,8 +480,6 @@ roiEditor = function(element, roiGroupLoader) {
             if (addPolygonRoiTool.current.segments.length >= 2) {
                 addPolygonRoiTool.current.data.text.position = addPolygonRoiTool.current.bounds.center;
             }
-        },
-        'onMouseUp': function(event) {
         }
     });
 
@@ -509,17 +515,17 @@ roiEditor = function(element, roiGroupLoader) {
 
     $("#edit-roi-label").click(function() {
         if (selectedItem) {
-            var newLabel = prompt('Label:', selectedItem.data.label);
+            var newLabel = prompt('Label:', selectedItem.data.original.textValue);
             if (newLabel !== null && (newLabel !== '' || selectedItem.type != 'point-text')) {
                 var item = selectedItem;
-                var oldLabel = item.data.label;
+                var oldLabel = item.data.original.textValue;
                 history.add(
                     "rename",
                     function() { // undo rename
-                        item.data.label = item.data.text.content = oldLabel;
+                        item.data.original.textValue = item.data.text.content = oldLabel;
                         selectItem(item);
                     }, function() { // redo rename
-                        item.data.label = item.data.text.content = newLabel;
+                        item.data.original.textValue = item.data.text.content = newLabel;
                         selectItem(item);
                     }, true);
             }
@@ -550,16 +556,14 @@ roiEditor = function(element, roiGroupLoader) {
     $("#add-rectangle-roi").click(function() {
         addRoiTool.activateWith(function(event) {
             var shape = new paper.Path.Rectangle(event.downPoint, event.point);
-            shape.data.type = 'Rectangle';
-            return shape;
+            return [shape, 'Rectangle'];
         });
     });
 
     $("#add-ellipse-roi").click(function() {
         addRoiTool.activateWith(function(event) {
             var shape = new paper.Path.Ellipse(event.downPoint, event.point);
-            shape.data.type = 'Ellipse';
-            return shape;
+            return [shape, 'Ellipse'];
         });
     });
 
@@ -570,8 +574,7 @@ roiEditor = function(element, roiGroupLoader) {
     $("#add-line-roi").click(function() {
         addRoiTool.activateWith(function(event) {
             var shape = new paper.Path([event.downPoint, event.point]);
-            shape.data.type = 'Line';
-            return shape;
+            return [shape, 'Line'];
         })
     });
 
@@ -592,6 +595,11 @@ roiEditor = function(element, roiGroupLoader) {
         history.redo();
     });
 
+    $("#save").click(function() {
+        var json = saveROIsToJson(roiGroup.children);
+        $("#saved-json").text(json);
+    });
+
     $("#zoom-tool").on('change', function(event) {
         zoom(parseFloat(this.value, 10) / 100);
     });
@@ -600,7 +608,9 @@ roiEditor = function(element, roiGroupLoader) {
         $("#roi-table tbody").empty();
         for (var idx in roiGroup.children) {
             var roi = roiGroup.children[idx];
-            $("#roi-table tbody").append("<tr><td>" + roi.data.original.id + "</td><td>" + roi.data.type + "</td><td>" + roi.data.label + "</td></tr>");
+            $("#roi-table tbody").append("<tr><td>" + roi.data.original.id +
+                                         "</td><td>" + roi.data.original.type +
+                                         "</td><td>" + roi.data.original.textValue + "</td></tr>");
         }
         console.log(roiGroup.firstChild)
     });
