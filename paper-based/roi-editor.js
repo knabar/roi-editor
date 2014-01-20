@@ -243,13 +243,7 @@ roiEditor = function(element, roiGroupLoader) {
         handles.update = function() {
             handles.bringToFront().visible = true;
             for (var i in handles.children) {
-                try {
-                    handles.children[i].position = (handles.pathmode ? selectedItem.segments[i].point : selectBox.bounds[modes[i]]);
-                } catch(e) {
-                    console.log(e);
-                    console.log(handles);
-                    throw e;
-                }
+                handles.children[i].position = (handles.pathmode ? selectedItem.segments[i].point : selectBox.bounds[modes[i]]);
             }
         };
         handles.getMode = function(point) {
