@@ -74,6 +74,62 @@ var loadROIsFromJson = function(shapeCallback) {
 };
 
 
+var addUpdater = function(shape) {
+    var updaters = {
+        'Rectangle': function() {
+            var temp = shape.bounds;
+            shape.data.original.x = temp.x;
+            shape.data.original.y = temp.y;
+            shape.data.original.width = temp.width;
+            shape.data.original.height = temp.height;
+        },
+        'Ellipse': function() {
+            var temp = shape.bounds;
+            shape.data.original.cx = temp.center.x;
+            shape.data.original.cy = temp.center.y;
+            shape.data.original.rx = temp.width / 2;
+            shape.data.original.ry = temp.height / 2;
+        },
+        'Point': function() {
+            var temp = shape.bounds;
+            shape.data.original.cx = temp.center.x;
+            shape.data.original.cy = temp.center.y;
+        },
+        'Line': function() {
+            shape.data.original.x1 = shape.firstSegment.point.x;
+            shape.data.original.y1 = shape.firstSegment.point.y;
+            shape.data.original.x2 = shape.lastSegment.point.x;
+            shape.data.original.y2 = shape.lastSegment.point.y;
+        },
+        'Polygon': function() {
+        },
+        'Label': function() {
+        }
+    };
+    shape.data.update = (
+        updaters[shape.data.original.type] !== undefined ?
+        updaters[shape.data.original.type] :
+        function() {
+           console.log('Unknown shape type ' + shape.data.original.type + ' when updating');
+        }
+    );
+};
+
+var saveROIsToJson = function(shapes) {
+    data = [];
+    for (var idx in shapes) {
+        var shape = shapes[idx];
+        // TODO: combine multiple shapes of same group
+        data.push({
+            'id': shape.data.group.id,
+            'shapes': [
+                shape.data.original
+            ]})
+    }
+    return JSON.stringify(data, null, 4);
+};
+
+
 roiEditor = function(element, roiGroupLoader) {
     paper.setup(element);
 
@@ -89,6 +145,7 @@ roiEditor = function(element, roiGroupLoader) {
     var roiLabels = new paper.Group();
     var roiGroup = new paper.Group();
     roiGroupLoader(function(shape) {
+        addUpdater(shape);
         roiGroup.addChild(shape);
         if (shape.type != 'point-text') {
             roiLabels.addChild(createTextLabel(shape));
@@ -172,7 +229,7 @@ roiEditor = function(element, roiGroupLoader) {
         handles.pathmode = false;
         handles.create = function(pathmode) {
             handles.hide();
-            handles.pathmode = (selectedItem.data.original.type == 'Line') || (pathmode && selectedItem.segments);
+            handles.pathmode = (selectedItem.data.original.type == 'Line') || (pathmode && selectedItem.data.original.type == 'Polygon');
             var symbol = handles.pathmode ? new paper.Path.Rectangle(0, 0, 11, 11) :
                                             new paper.Path.Circle(new paper.Point(0, 0), 6);
             for (var i in (handles.pathmode ? selectedItem.segments : modes)) {
@@ -310,34 +367,43 @@ roiEditor = function(element, roiGroupLoader) {
                 if (mode == 'dragShape') {
                     oldPosition = undoData;
                     newPosition = item.position;
+                    item.data.update();
                     history.add(
                         'move',
                         history.cleanupWrapper(item, false, function() { // undo move
                             item.position = oldPosition;
+                            item.data.update();
                         }), history.cleanupWrapper(item, false, function() { // redo move
                             item.position = newPosition;
+                            item.data.update();
                         }));
                 } else if (mode.indexOf('resize') === 0) {
                     var xratio = undoData.width / item.bounds.width;
                     var yratio = undoData.height / item.bounds.height;
                     var anchor = resizeOptions[mode.substring(6)][0];
+                    item.data.update();
                     history.add(
                         'resize',
                         history.cleanupWrapper(item, false, function() { // undo resize
                             item.scale(xratio, yratio, item.bounds[anchor]);
+                            item.data.update();
                         }), history.cleanupWrapper(item, false, function() { // redo resize
                             item.scale(1 / xratio, 1 / yratio, item.bounds[anchor]);
+                            item.data.update();
                         }));
                 } else if (mode == 'moveNode') {
                     var handle = selectedHandle;
                     oldPosition = undoData;
                     newPosition = item.segments[handle].point.clone();
+                    item.data.update();
                     history.add(
                         'move node',
                         history.cleanupWrapper(item, true, function() { // undo move node
                             item.segments[handle].point = oldPosition;
+                            item.data.update();
                         }), history.cleanupWrapper(item, true, function() { // redo move node
                             item.segments[handle].point = newPosition;
+                            item.data.update();
                         }));
                 }
             } else if (!lastHit) {
@@ -367,6 +433,8 @@ roiEditor = function(element, roiGroupLoader) {
         roi.strokeWidth = roi.data.original.strokeWidth;
         roi.fillColor = roi.data.original.fillColor;
         roi.fillColor.alpha = roi.data.original.fillAlpha;
+        addUpdater(roi);
+        roi.data.update();
         return roi;
     };
 
@@ -463,6 +531,7 @@ roiEditor = function(element, roiGroupLoader) {
                 initializeRoi(addPolygonRoiTool.current, 'Polygon');
             }
             addPolygonRoiTool.current.add(event.point);
+            addPolygonRoiTool.current.data.update();
             if (addPolygonRoiTool.current.segments.length == 2) {
                 var polygon = addPolygonRoiTool.current;
                 roiGroup.addChild(polygon);
@@ -523,9 +592,11 @@ roiEditor = function(element, roiGroupLoader) {
                     "rename",
                     function() { // undo rename
                         item.data.original.textValue = item.data.text.content = oldLabel;
+                        item.data.update();
                         selectItem(item);
                     }, function() { // redo rename
                         item.data.original.textValue = item.data.text.content = newLabel;
+                        item.data.update();
                         selectItem(item);
                     }, true);
             }
