@@ -2,78 +2,6 @@
 var ROI_MIN_SIZE = 20;
 
 
-var loadROIsFromJson = function(shapeCallback) {
-
-    var processShape = function(obj, shape, groupId) {
-        obj.style.strokeColor = shape.strokeColor;
-        obj.style.strokeColor.alpha = shape.strokeAlpha;
-        obj.style.strokeWidth = shape.stokeWidth;
-
-        obj.style.fillColor = shape.fillColor;
-        obj.style.fillColor.alpha = shape.fillAlpha;
-
-        shapeCallback(obj);
-    };
-
-    var loaders = {
-        'Rectangle': function(shape) {
-            return new paper.Path.Rectangle(shape.x, shape.y, shape.width, shape.height);
-        },
-        'Ellipse': function(shape) {
-            return new paper.Path.Ellipse({
-                center: [shape.cx, shape.cy],
-                radius: [shape.rx, shape.ry]
-            });
-        },
-        'Point': function(shape) {
-            return new paper.Path.Ellipse({
-                center: [shape.cx, shape.cy],
-                radius: [10, 10]
-            });
-        },
-        'Line': function(shape) {
-            return new paper.Path.Line([shape.x1, shape.y1], [shape.x2, shape.y2]);
-        },
-        'Polygon': function(shape) {
-            var polygon = new paper.Path();
-            polygon.closed = true;
-            var points = shape.points.split(" ");
-            for (var p = 1; p < points.length; p += 3) {
-                polygon.add(new paper.Point(parseInt(points[p], 10), parseInt(points[p + 1], 10)));
-            }
-            return polygon;
-        },
-        'Label': function(shape) {
-            var text = new paper.PointText(shape.x, shape.y);
-            text.content = shape.textValue;
-            text.justification = 'center';
-            text.data.text = text; // to make changing label work on object itself
-            return text;
-        }
-    };
-
-    $.getJSON(
-        "test.json",
-        function(data) {
-            for (roi in data) {
-                for (idx in data[roi].shapes) {
-                    var shape = data[roi].shapes[idx];
-                    if (shape.theZ === 0 && shape.theT === 0 &&
-                        loaders[shape.type] !== undefined) {
-                        obj = loaders[shape.type](shape);
-                        // keep references to original data
-                        obj.data.original = shape;
-                        obj.data.group = data[roi];
-                        processShape(obj, shape);
-                    }
-                }
-            }
-            paper.view.draw();
-        }
-    );
-};
-
-
 var addUpdater = function(shape) {
     var updaters = {
         'Rectangle': function() {
@@ -144,7 +72,7 @@ var saveROIsToJson = function(shapes) {
 };
 
 
-roiEditor = function(element, roiGroupLoader) {
+roiEditor = function(element, jsonUrl, theZ, theT) {
     paper.setup(element);
 
     var createTextLabel = function(item, label) {
@@ -158,13 +86,83 @@ roiEditor = function(element, roiGroupLoader) {
 
     var roiLabels = new paper.Group();
     var roiGroup = new paper.Group();
-    roiGroupLoader(function(shape) {
-        addUpdater(shape);
-        roiGroup.addChild(shape);
-        if (shape.type != 'point-text') {
-            roiLabels.addChild(createTextLabel(shape));
-        }
-    });
+
+    var roiLoader = function(jsonUrl, theZ, theT) {
+
+        var processShape = function(obj, shape, groupId) {
+            obj.style.strokeColor = shape.strokeColor;
+            obj.style.strokeColor.alpha = shape.strokeAlpha;
+            obj.style.strokeWidth = shape.stokeWidth;
+
+            obj.style.fillColor = shape.fillColor;
+            obj.style.fillColor.alpha = shape.fillAlpha;
+
+            addUpdater(obj);
+            roiGroup.addChild(obj);
+            if (obj.type != 'point-text') {
+                roiLabels.addChild(createTextLabel(obj));
+            }
+        };
+
+        var loaders = {
+            'Rectangle': function(shape) {
+                return new paper.Path.Rectangle(shape.x, shape.y, shape.width, shape.height);
+            },
+            'Ellipse': function(shape) {
+                return new paper.Path.Ellipse({
+                    center: [shape.cx, shape.cy],
+                    radius: [shape.rx, shape.ry]
+                });
+            },
+            'Point': function(shape) {
+                return new paper.Path.Ellipse({
+                    center: [shape.cx, shape.cy],
+                    radius: [10, 10]
+                });
+            },
+            'Line': function(shape) {
+                return new paper.Path.Line([shape.x1, shape.y1], [shape.x2, shape.y2]);
+            },
+            'Polygon': function(shape) {
+                var polygon = new paper.Path();
+                polygon.closed = true;
+                var points = shape.points.split(" ");
+                for (var p = 1; p < points.length; p += 3) {
+                    polygon.add(new paper.Point(parseInt(points[p], 10), parseInt(points[p + 1], 10)));
+                }
+                return polygon;
+            },
+            'Label': function(shape) {
+                var text = new paper.PointText(shape.x, shape.y);
+                text.content = shape.textValue;
+                text.justification = 'center';
+                text.data.text = text; // to make changing label work on object itself
+                return text;
+            }
+        };
+
+        $.getJSON(
+            jsonUrl,
+            function(data) {
+                for (roi in data) {
+                    for (idx in data[roi].shapes) {
+                        var shape = data[roi].shapes[idx];
+                        if (shape.theZ === theZ && shape.theT === theT &&
+                            loaders[shape.type] !== undefined) {
+                            obj = loaders[shape.type](shape);
+                            // keep references to original data
+                            obj.data.original = shape;
+                            obj.data.group = data[roi];
+                            processShape(obj, shape);
+                        }
+                    }
+                }
+                paper.view.draw();
+            }
+        );
+    };
+
+    roiLoader(jsonUrl, theZ || 0, theT || 0);
 
     var history = function(undoButton, redoButton) {
         var history = {};

@@ -9,7 +9,7 @@
 
 	$(document).ready(function() {
 
-            roiEditor(document.getElementById('myCanvas'), loadROIsFromJson);
+            roiEditor(document.getElementById('myCanvas'), "test.json", 0, 0);
 
             var image = new paper.Raster("image").sendToBack();
             image.translate(image.width / 2, image.height / 2);
