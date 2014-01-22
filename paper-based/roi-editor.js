@@ -82,6 +82,7 @@ var addUpdater = function(shape) {
             shape.data.original.y = temp.y;
             shape.data.original.width = temp.width;
             shape.data.original.height = temp.height;
+            shape.data.original.textValue = shape.data.text.content;
         },
         'Ellipse': function() {
             var temp = shape.bounds;
@@ -89,21 +90,34 @@ var addUpdater = function(shape) {
             shape.data.original.cy = temp.center.y;
             shape.data.original.rx = temp.width / 2;
             shape.data.original.ry = temp.height / 2;
+            shape.data.original.textValue = shape.data.text.content;
         },
         'Point': function() {
             var temp = shape.bounds;
             shape.data.original.cx = temp.center.x;
             shape.data.original.cy = temp.center.y;
+            shape.data.original.textValue = shape.data.text.content;
         },
         'Line': function() {
             shape.data.original.x1 = shape.firstSegment.point.x;
             shape.data.original.y1 = shape.firstSegment.point.y;
             shape.data.original.x2 = shape.lastSegment.point.x;
             shape.data.original.y2 = shape.lastSegment.point.y;
+            shape.data.original.textValue = shape.data.text.content;
         },
         'Polygon': function() {
+            var path = "";
+            for (var idx in shape.segments) {
+                path += (path ? " L " : "M ") + shape.segments[idx].point.x + " " + shape.segments[idx].point.y;
+            }
+            shape.data.original.points = path + " z";
+            shape.data.original.textValue = shape.data.text.content;
         },
         'Label': function() {
+            var temp = shape.bounds;
+            shape.data.original.x = temp.center.x;
+            shape.data.original.y = temp.center.y;
+            shape.data.original.textValue = shape.data.text.content;
         }
     };
     shape.data.update = (
