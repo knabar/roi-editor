@@ -2,78 +2,71 @@
 var ROI_MIN_SIZE = 20;
 
 
-var addUpdater = function(shape) {
-    var updaters = {
-        'Rectangle': function() {
-            var temp = shape.bounds;
-            shape.data.original.x = temp.x;
-            shape.data.original.y = temp.y;
-            shape.data.original.width = temp.width;
-            shape.data.original.height = temp.height;
-            shape.data.original.textValue = shape.data.text.content;
-        },
-        'Ellipse': function() {
-            var temp = shape.bounds;
-            shape.data.original.cx = temp.center.x;
-            shape.data.original.cy = temp.center.y;
-            shape.data.original.rx = temp.width / 2;
-            shape.data.original.ry = temp.height / 2;
-            shape.data.original.textValue = shape.data.text.content;
-        },
-        'Point': function() {
-            var temp = shape.bounds;
-            shape.data.original.cx = temp.center.x;
-            shape.data.original.cy = temp.center.y;
-            shape.data.original.textValue = shape.data.text.content;
-        },
-        'Line': function() {
-            shape.data.original.x1 = shape.firstSegment.point.x;
-            shape.data.original.y1 = shape.firstSegment.point.y;
-            shape.data.original.x2 = shape.lastSegment.point.x;
-            shape.data.original.y2 = shape.lastSegment.point.y;
-            shape.data.original.textValue = shape.data.text.content;
-        },
-        'Polygon': function() {
-            var path = "";
-            for (var idx in shape.segments) {
-                path += (path ? " L " : "M ") + shape.segments[idx].point.x + " " + shape.segments[idx].point.y;
-            }
-            shape.data.original.points = path + " z";
-            shape.data.original.textValue = shape.data.text.content;
-        },
-        'Label': function() {
-            var temp = shape.bounds;
-            shape.data.original.x = temp.center.x;
-            shape.data.original.y = temp.center.y;
-            shape.data.original.textValue = shape.data.text.content;
-        }
-    };
-    shape.data.update = (
-        updaters[shape.data.original.type] !== undefined ?
-        updaters[shape.data.original.type] :
-        function() {
-           console.log('Unknown shape type ' + shape.data.original.type + ' when updating');
-        }
-    );
-};
-
-var saveROIsToJson = function(shapes) {
-    data = [];
-    for (var idx in shapes) {
-        var shape = shapes[idx];
-        // TODO: combine multiple shapes of same group
-        data.push({
-            'id': shape.data.group.id,
-            'shapes': [
-                shape.data.original
-            ]})
-    }
-    return JSON.stringify(data, null, 4);
-};
-
-
 roiEditor = function(element, jsonUrl, theZ, theT) {
     paper.setup(element);
+
+    var all_data;
+
+    var addUpdater = function(shape) {
+        var updateCommonPropertiesFunc = function(updateSpecificPropertiesFunc) {
+            return function() {
+                shape.data.original.textValue = shape.data.text ? shape.data.text.content : "";
+                updateSpecificPropertiesFunc(shape.bounds);
+            };
+        };
+        var updaters = {
+            'Rectangle': function(bounds) {
+                shape.data.original.x = bounds.x;
+                shape.data.original.y = bounds.y;
+                shape.data.original.width = bounds.width;
+                shape.data.original.height = bounds.height;
+            },
+            'Ellipse': function(bounds) {
+                shape.data.original.cx = bounds.center.x;
+                shape.data.original.cy = bounds.center.y;
+                shape.data.original.rx = bounds.width / 2;
+                shape.data.original.ry = bounds.height / 2;
+            },
+            'Point': function(bounds) {
+                shape.data.original.cx = bounds.center.x;
+                shape.data.original.cy = bounds.center.y;
+            },
+            'Line': function(bounds) {
+                shape.data.original.x1 = shape.firstSegment.point.x;
+                shape.data.original.y1 = shape.firstSegment.point.y;
+                shape.data.original.x2 = shape.lastSegment.point.x;
+                shape.data.original.y2 = shape.lastSegment.point.y;
+            },
+            'Polygon': function(bounds) {
+                var path = "";
+                for (var idx in shape.segments) {
+                    path += (path ? " L " : "M ") + shape.segments[idx].point.x + " " + shape.segments[idx].point.y;
+                }
+                shape.data.original.points = path + " z";
+            },
+            'Label': function(bounds) {
+                shape.data.original.x = bounds.center.x;
+                shape.data.original.y = bounds.center.y;
+            }
+        };
+        shape.data.update = updateCommonPropertiesFunc(updaters[shape.data.original.type]);
+    };
+
+    var saveROIsToJson = function(shapes) {
+        // save all_data, except for removed shapes
+        data = JSON.parse(JSON.stringify(all_data)); // full clone
+        for (var idx = data.length - 1; idx >= 0; idx--) {
+            for (var shape = data[idx].shapes.length - 1; shape >= 0; shape--) {
+                if (data[idx].shapes[shape].deleted) {
+                    data[idx].shapes.splice(shape, 1);
+                }
+            }
+            if (data[idx].shapes.length == 0) {
+                data.splice(idx, 1);
+            }
+        }
+        return JSON.stringify(data, null, 4);
+    };
 
     var createTextLabel = function(item, label) {
         var text = new paper.PointText(item.bounds.center);
@@ -144,6 +137,7 @@ roiEditor = function(element, jsonUrl, theZ, theT) {
         $.getJSON(
             jsonUrl,
             function(data) {
+                all_data = data;
                 for (roi in data) {
                     for (idx in data[roi].shapes) {
                         var shape = data[roi].shapes[idx];
@@ -418,7 +412,7 @@ roiEditor = function(element, jsonUrl, theZ, theT) {
         }
     });
 
-    var initializeRoi = function(roi, type) {
+    var initializeRoi = function(roi, type, temporary) {
         roi.data.original = {
             "fontStyle": "Normal",
             "fillAlpha": 0.25,
@@ -431,8 +425,8 @@ roiEditor = function(element, jsonUrl, theZ, theT) {
             "strokeColor": "#c4c4c4",
             "fillColor": "#000000",
             "type": type,
-            "theZ": 0,
-            "theT": 0
+            "theZ": theZ,
+            "theT": theT
         };
         roi.strokeColor = roi.data.original.strokeColor;
         roi.strokeColor.alpha = roi.data.original.strokeAlpha;
@@ -441,13 +435,22 @@ roiEditor = function(element, jsonUrl, theZ, theT) {
         roi.fillColor.alpha = roi.data.original.fillAlpha;
         addUpdater(roi);
         roi.data.update();
+        if (!temporary) {
+            roi.data.group = {
+                "shapes": [roi.data.original],
+                "id": null
+            };
+            all_data.push(roi.data.group);
+        }
         return roi;
     };
 
     var addRoiTool = new paper.Tool({
         'onMouseDrag': function(event) {
             dragging = true;
-            initializeRoi.apply(this, new addRoiTool.createItem(event)).removeOnDrag().removeOnUp();
+            var args = new addRoiTool.createItem(event);
+            args.push(true);
+            initializeRoi.apply(this, args).removeOnDrag().removeOnUp();
         },
         'onMouseDown': function(event) {
             selectItem(null);
@@ -461,10 +464,12 @@ roiEditor = function(element, jsonUrl, theZ, theT) {
                     function() { // undo create
                             item.remove();
                             selectItem(null);
+                            item.data.original.deleted = true;
                         }, function() { // redo create
                             roiGroup.addChild(item);
                             roiLabels.addChild(createTextLabel(item));
                             selectItem(item);
+                            delete item.data.original.deleted;
                         }, true);
                 defaultTool.activate();
             }
@@ -487,10 +492,12 @@ roiEditor = function(element, jsonUrl, theZ, theT) {
                 function() { // undo create
                         point.remove();
                         selectItem(null);
+                        point.data.original.deleted = true;
                     }, function() { // redo create
                         roiGroup.addChild(point);
                         roiLabels.addChild(createTextLabel(point));
                         selectItem(point);
+                        delete point.data.original.deleted;
                     }, true);
             defaultTool.activate();
         }
@@ -510,9 +517,11 @@ roiEditor = function(element, jsonUrl, theZ, theT) {
                     function() { // undo create
                             text.remove();
                             selectItem(null);
+                            text.data.original.deleted = true;
                         }, function() { // redo create
                             roiGroup.addChild(text);
                             selectItem(text);
+                            delete text.data.original.deleted;
                         }, true);
                 defaultTool.activate();
             }
@@ -547,9 +556,11 @@ roiEditor = function(element, jsonUrl, theZ, theT) {
                     function() { // undo create
                         polygon.remove();
                         selectItem(null);
+                        polygon.data.original.deleted = true;
                     }, function() { // redo create
                         roiGroup.addChild(polygon);
                         selectItem(polygon);
+                        delete polygon.data.original.deleted;
                     });
             }
             if (addPolygonRoiTool.current.segments.length >= 2) {
@@ -618,10 +629,12 @@ roiEditor = function(element, jsonUrl, theZ, theT) {
                     roiGroup.addChild(item);
                     roiLabels.addChild(item.data.text);
                     selectItem(item);
+                    delete item.data.original.deleted;
                 }, function() { // redo delete
                     item.remove();
                     item.data.text.remove();
                     selectItem(null);
+                    item.data.original.deleted = true; // mark deleted so that save will skip this
                 }, true);
         }
     });
@@ -692,5 +705,20 @@ roiEditor = function(element, jsonUrl, theZ, theT) {
         console.log(roiGroup.firstChild)
     });
 
+    {
+        defaultTool.oldActivate = defaultTool.activate;
+        defaultTool.activate = function() {
+            defaultTool.oldActivate();
+            $("button.tool").removeClass("activeTool");
+            $("#edit-roi").addClass("activeTool");
+        };
+    };
+
+    $("button.tool").click(function() {
+        $("button.tool").removeClass("activeTool");
+        $(this).addClass("activeTool");
+    });
+
     defaultTool.activate();
+
 };

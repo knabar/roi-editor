@@ -17,6 +17,11 @@
         });
 
 </script>
+<style>
+    button.activeTool {
+        background-color: green;
+    }
+</style>
 </head>
 <body>
         <pre id="saved-json" style="width: 600px; float: right; border: 1px solid black; height: 800px; overflow: scroll;"></pre>
@@ -27,23 +32,23 @@
 
         <button id="toggle-rois">Toggle ROIs</button>
 
-        <button id="edit-roi">Edit</button>
+        <button class="tool" id="edit-roi">Edit</button>
 
         <button id="edit-roi-label">Edit Label</button>
 
         <button id="delete-roi">Delete</button>
 
-        <button id="add-rectangle-roi">Rectangle</button>
+        <button class="tool" id="add-rectangle-roi">Rectangle</button>
 
-        <button id="add-ellipse-roi">Ellipse</button>
+        <button class="tool" id="add-ellipse-roi">Ellipse</button>
 
-        <button id="add-point-roi">Point</button>
+        <button class="tool" id="add-point-roi">Point</button>
 
-        <button id="add-line-roi">Line</button>
+        <button class="tool" id="add-line-roi">Line</button>
 
-        <button id="add-polygon-roi">Polygon</button>
+        <button class="tool" id="add-polygon-roi">Polygon</button>
 
-        <button id="add-text-roi">Text</button>
+        <button class="tool" id="add-text-roi">Text</button>
 
         <button id="undo"></button>
 
