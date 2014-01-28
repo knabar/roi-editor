@@ -9,7 +9,7 @@
 
 	$(document).ready(function() {
 
-            roiEditor(document.getElementById('myCanvas'), "test.json", 0, 0);
+            roiEditor(document.getElementById('myCanvas'), "test2.json", 21, 0);
 
             var image = new paper.Raster("image").sendToBack();
             image.translate(image.width / 2, image.height / 2);
@@ -53,6 +53,10 @@
         <button id="undo"></button>
 
         <button id="redo"></button>
+
+        Z: <input type="number" min="0" max="100" id="theZ" value="21" />
+
+        T: <input type="number" min="0" max="100" id="theT" value="0" />
 
         <button id="save">Save</button>
 
